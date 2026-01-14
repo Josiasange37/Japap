@@ -3,6 +3,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
+import { getMessaging } from 'firebase/messaging';
 import { getAnalytics } from "firebase/analytics";
 
 const firebaseConfig = {
@@ -21,4 +22,5 @@ export const db = getFirestore(app);
 export const rtdb = getDatabase(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
+export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;

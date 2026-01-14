@@ -6,14 +6,15 @@ import {
     set,
     update,
     runTransaction,
-    off
+    off,
+    remove
 } from 'firebase/database';
 import {
     onAuthStateChanged,
     signInAnonymously
 } from 'firebase/auth';
-import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
-import { rtdb, storage, auth } from '../firebase';
+import { getToken } from 'firebase/messaging';
+import { rtdb, auth, messaging } from '../firebase';
 import type { Post, UserProfile, Comment } from '../types';
 
 export interface Toast {
@@ -70,6 +71,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, []);
 
+    // FCM Notification Support
+    useEffect(() => {
+        if (!messaging) return;
+
+        const requestPermission = async () => {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    // This VAPID key is a placeholder - user would normally provide their own
+                    const token = await getToken(messaging!, {
+                        vapidKey: 'BGHc0xO8y6_D_R9v_W7P_Q' // Example public VAPID key
+                    });
+                    if (token) {
+                        console.log('FCM Token:', token);
+                        // In a real app, send this token to your server to associate with user
+                    }
+                }
+            } catch (err) {
+                console.error('An error occurred while retrieving token. ', err);
+            }
+        };
+
+        requestPermission();
+    }, []);
+
     const showToast = (message: string, type: Toast['type'] = 'success') => {
         const id = Date.now().toString();
         const newToast: Toast = { id, message, type };
@@ -110,6 +136,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return () => off(postsRef);
     }, []);
 
+    // 7-Day Ephemeral Cleanup
+    useEffect(() => {
+        const cleanupPosts = () => {
+            const postsRef = ref(rtdb, 'posts');
+            onValue(postsRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    const now = Date.now();
+                    const ONE_WEEK = 7 * 24 * 60 * 60 * 1000;
+                    Object.keys(data).forEach(async (key) => {
+                        if (now - data[key].timestamp > ONE_WEEK) {
+                            try {
+                                await remove(ref(rtdb, `posts/${key}`));
+                                console.log(`Deleted expired post: ${key}`);
+                            } catch (e) {
+                                console.error(`Error deleting expired post ${key}:`, e);
+                            }
+                        }
+                    });
+                }
+            }, { onlyOnce: true });
+        };
+
+        const interval = setInterval(cleanupPosts, 1000 * 60 * 60); // Run every hour
+        cleanupPosts(); // Initial run
+
+        return () => clearInterval(interval);
+    }, []);
+
     const updateUser = async (updates: Partial<UserProfile>) => {
         const newUser = user ? { ...user, ...updates } : updates as UserProfile;
         setUser(newUser);
@@ -124,6 +179,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const uploadToCloudinary = async (file64: string, type: string) => {
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+        // Cloudinary handles image/video/raw (for audio)
+        let resourceType = 'image';
+        if (type === 'video') resourceType = 'video';
+        if (type === 'audio') resourceType = 'video'; // Cloudinary treats audio as video
+
+        const url = `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`;
+
+        const formData = new FormData();
+        formData.append('file', file64);
+        formData.append('upload_preset', uploadPreset);
+
+        const response = await fetch(url, { method: 'POST', body: formData });
+        if (!response.ok) throw new Error('Cloudinary upload failed');
+
+        const data = await response.json();
+        return data.secure_url;
+    };
+
     const addPost = async (newPostData: Omit<Post, 'id' | 'author' | 'stats'>) => {
         if (!user) return;
 
@@ -132,11 +209,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
             let mediaUrl = newPostData.content;
 
-            // Handle base64 upload to Storage if it's media
+            // Handle base64 upload to Cloudinary if it's media
             if (newPostData.type !== 'text' && newPostData.content.startsWith('data:')) {
-                const storageRefInstance = storageRef(storage, `posts/${Date.now()}`);
-                await uploadString(storageRefInstance, newPostData.content, 'data_url');
-                mediaUrl = await getDownloadURL(storageRefInstance);
+                mediaUrl = await uploadToCloudinary(newPostData.content, newPostData.type);
             }
 
             const postsRef = ref(rtdb, 'posts');
