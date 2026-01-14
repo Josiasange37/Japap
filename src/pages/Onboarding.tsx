@@ -11,15 +11,23 @@ export default function Onboarding() {
     const [avatar, setAvatar] = useState<string | null>(null);
 
     const { updateUser } = useApp();
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleFinish = () => {
-        updateUser({
-            pseudo,
-            avatar,
-            onboarded: true,
-            bio: "New to Japap! ⚡️"
-        });
-        navigate('/');
+    const handleFinish = async () => {
+        setIsLoading(true);
+        try {
+            await updateUser({
+                pseudo,
+                avatar,
+                onboarded: true,
+                bio: "New to Japap! ⚡️"
+            });
+            navigate('/', { replace: true });
+        } catch (error) {
+            console.error("Failed to finish onboarding:", error);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const nextStep = () => setStep(s => s + 1);
@@ -48,6 +56,7 @@ export default function Onboarding() {
                                 avatar={avatar}
                                 setAvatar={setAvatar}
                                 onFinish={handleFinish}
+                                isLoading={isLoading}
                             />
                         )}
                     </AnimatePresence>
@@ -127,10 +136,11 @@ function PolicyItem({ icon, title, desc }: { icon: string, title: string, desc: 
     )
 }
 
-function ProfileStep({ pseudo, setPseudo, avatar, setAvatar, onFinish }: {
+function ProfileStep({ pseudo, setPseudo, avatar, setAvatar, onFinish, isLoading }: {
     pseudo: string, setPseudo: (s: string) => void,
     avatar: string | null, setAvatar: (s: string | null) => void,
-    onFinish: () => void
+    onFinish: () => void,
+    isLoading: boolean
 }) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -183,10 +193,14 @@ function ProfileStep({ pseudo, setPseudo, avatar, setAvatar, onFinish }: {
 
             <button
                 onClick={onFinish}
-                disabled={!isValid}
-                className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${isValid ? 'bg-black text-white hover:scale-[1.02]' : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'}`}
+                disabled={!isValid || isLoading}
+                className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${isValid && !isLoading ? 'bg-black text-white hover:scale-[1.02]' : 'bg-zinc-200 text-zinc-400 cursor-not-allowed'}`}
             >
-                Complete Setup <Check size={20} />
+                {isLoading ? (
+                    <div className="w-6 h-6 border-4 border-zinc-400 border-t-black rounded-full animate-spin" />
+                ) : (
+                    <>Complete Setup <Check size={20} /></>
+                )}
             </button>
         </motion.div>
     )
