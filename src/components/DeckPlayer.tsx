@@ -5,12 +5,11 @@ import { useApp } from '../context/AppContext';
 import ReactionPicker from './ReactionPicker';
 
 const swipeVariants = {
-    enter: (_: number) => ({
-        scale: 0.95,
-        y: -35,
-        opacity: 0.6,
+    enter: (direction: number) => ({
+        scale: 0.8,
+        y: direction > 0 ? 100 : -100,
+        opacity: 0,
         zIndex: 2,
-        x: 0,
     }),
     center: {
         zIndex: 3,
@@ -18,20 +17,21 @@ const swipeVariants = {
         y: 0,
         scale: 1,
         opacity: 1,
+        rotate: 0,
         transition: {
-            duration: 0.4,
-            ease: [0.16, 1, 0.3, 1] as const
+            duration: 0.5,
+            ease: [0.23, 1, 0.32, 1] as const
         }
     },
     exit: (direction: number) => ({
-        zIndex: 3,
-        x: direction > 0 ? 350 : -350,
+        zIndex: 4,
+        x: direction > 0 ? 500 : -500,
         opacity: 0,
-        scale: 1,
-        rotate: direction > 0 ? 10 : -10,
+        scale: 0.9,
+        rotate: direction > 0 ? 15 : -15,
         transition: {
             duration: 0.4,
-            ease: [0.16, 1, 0.3, 1] as const
+            ease: [0.4, 0, 0.2, 1] as const
         }
     })
 };
@@ -158,18 +158,20 @@ export default function DeckPlayer() {
                     initial="enter"
                     animate="center"
                     exit="exit"
-                    className="absolute inset-0 w-full h-full z-30 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] rounded-[30px]"
+                    className="absolute inset-0 w-full h-full z-30 shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] rounded-[30px]"
                     drag="x"
                     dragConstraints={{ left: 0, right: 0 }}
-                    dragElastic={0.7}
-                    onDragEnd={(_, { offset }) => {
+                    dragElastic={0.9}
+                    onDragEnd={(_, { offset, velocity }) => {
                         const swipe = offset.x;
-                        if (swipe < -100) {
+                        const v = velocity.x;
+                        if (swipe < -100 || v < -500) {
                             handleNext();
-                        } else if (swipe > 100) {
+                        } else if (swipe > 100 || v > 500) {
                             handlePrev();
                         }
                     }}
+                    whileDrag={{ scale: 1.02, rotate: direction * 2 }}
                 >
                     <Card
                         post={activePost}
@@ -192,6 +194,13 @@ export default function DeckPlayer() {
                 onSelect={handleReactionSelect}
                 onClose={() => setReactionPickerTarget(null)}
             />
+
+            {/* Hidden Preloading */}
+            <div className="hidden pointer-events-none opacity-0">
+                {nextPost && nextPost.type === 'image' && <img src={nextPost.content} alt="preload" />}
+                {nextPost && nextPost.type === 'video' && <video src={nextPost.content} preload="auto" />}
+                {nextNextPost && nextNextPost.type === 'image' && <img src={nextNextPost.content} alt="preload" />}
+            </div>
         </div>
     );
 }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Check } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 export default function Onboarding() {
     const [step, setStep] = useState(0); // 0: Welcome, 1: Policy, 2: Profile
@@ -9,10 +10,15 @@ export default function Onboarding() {
     const [pseudo, setPseudo] = useState('');
     const [avatar, setAvatar] = useState<string | null>(null);
 
+    const { updateUser } = useApp();
+
     const handleFinish = () => {
-        localStorage.setItem('japap_onboarded', 'true');
-        // Save user data to local storage/store
-        localStorage.setItem('japap_user', JSON.stringify({ pseudo, avatar }));
+        updateUser({
+            pseudo,
+            avatar,
+            onboarded: true,
+            bio: "New to Japap! ⚡️"
+        });
         navigate('/');
     };
 
