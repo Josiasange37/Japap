@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,100..900;1,100..900&family=Manrope:wght@200..800&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --color-bg: #eff6ff;
+  --color-card: #ffffff;
+  --color-text: #18181b;
+  --color-text-muted: #71717a;
+  --color-accent: #3b82f6;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Manrope', sans-serif;
+  overflow: hidden;
+  /* Prevent scrolling for the app-like feel on the main container, might enable for sub-pages */
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: 'Archivo', sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 3px;
+}
+
+/* Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Animation specific */
+.waveform-bar {
+  transition: height 0.15s ease;
+}
