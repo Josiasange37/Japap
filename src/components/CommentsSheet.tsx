@@ -2,16 +2,18 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Reply as ReplyIcon, Smile } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
 import ReactionPicker from './ReactionPicker';
-import type { Comment } from '../types';
+import type { GossipComment } from '../types';
 
 
 export default function CommentsSheet() {
     const { posts, addComment, reactToComment, activeCommentsPostId, setActiveCommentsPostId } = useApp();
+    const { t } = useLanguage();
     const postId = activeCommentsPostId;
     const onClose = () => setActiveCommentsPostId(null);
     const [text, setText] = useState('');
-    const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+    const [replyingTo, setReplyingTo] = useState<GossipComment | null>(null);
     const [reactingCommentId, setReactingCommentId] = useState<string | null>(null);
     const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
@@ -49,7 +51,7 @@ export default function CommentsSheet() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-black/50 z-[200] backdrop-blur-sm"
+                        className="fixed inset-0 bg-black/50 z-[200] backdrop-blur-sm"
                         onClick={onClose}
                     />
                     <motion.div
@@ -57,13 +59,13 @@ export default function CommentsSheet() {
                         animate={{ y: '0%' }}
                         exit={{ y: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-[201] h-[85%] flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.1)] overflow-hidden"
+                        className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-[201] h-[85%] flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.1)] overflow-hidden"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
                             <div className="flex flex-col">
-                                <span className="font-display font-bold text-xl text-zinc-900">Comments</span>
-                                <span className="text-xs text-zinc-500 font-medium">{comments.length} comments</span>
+                                <span className="font-display font-bold text-xl text-zinc-900">{t('comment.thread')}</span>
+                                <span className="text-xs text-zinc-500 font-medium">{comments.length} {t('post.comments').toLowerCase()}</span>
                             </div>
                             <button
                                 onClick={onClose}
@@ -76,12 +78,11 @@ export default function CommentsSheet() {
                         {/* Comments List */}
                         <div className="flex-1 overflow-y-auto pt-4 pb-12 flex flex-col gap-1">
                             {comments.length === 0 ? (
-                                <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-2">
-                                    <p className="text-sm font-medium">No comments yet</p>
-                                    <p className="text-xs">Be the first to start the conversation!</p>
+                                <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-2 px-6 text-center">
+                                    <p className="text-sm font-medium">{t('comment.empty')}</p>
                                 </div>
                             ) : (
-                                comments.map((comment: Comment) => (
+                                comments.map((comment: GossipComment) => (
                                     <div key={comment.id} className="relative group/comment group select-none">
                                         <motion.div
                                             drag="x"
@@ -96,7 +97,6 @@ export default function CommentsSheet() {
                                             onPointerDown={(_e) => {
                                                 const timer = setTimeout(() => {
                                                     setReactingCommentId(comment.id);
-                                                    // Add a small vibrate if on mobile
                                                     if (window.navigator.vibrate) window.navigator.vibrate(50);
                                                 }, 600);
 
@@ -109,7 +109,6 @@ export default function CommentsSheet() {
 
                                                 window.addEventListener('pointerup', cancel);
                                                 window.addEventListener('pointermove', (e) => {
-                                                    // If moved too much, cancel the hold
                                                     if (Math.abs(e.movementX) > 5 || Math.abs(e.movementY) > 5) {
                                                         cancel();
                                                     }
@@ -160,7 +159,6 @@ export default function CommentsSheet() {
                                                                 className="absolute -bottom-4 -right-2 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] border border-zinc-100 rounded-full px-2 py-0.5 min-w-[28px] h-7 flex items-center justify-center text-sm cursor-pointer z-30 hover:border-zinc-200 transition-colors"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    // For now, toggle reaction Picker if needed, or just handle it
                                                                     setReactingCommentId(comment.id);
                                                                 }}
                                                             >
@@ -180,7 +178,6 @@ export default function CommentsSheet() {
                                             </div>
                                         </div>
 
-                                        {/* Localized Reaction Picker */}
                                         <div className="absolute top-0 right-0 z-[100]">
                                             <ReactionPicker
                                                 visible={reactingCommentId === comment.id}
@@ -230,7 +227,7 @@ export default function CommentsSheet() {
                                         type="text"
                                         value={text}
                                         onChange={(e) => setText(e.target.value)}
-                                        placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
+                                        placeholder={t('comment.placeholder')}
                                         className="w-full bg-zinc-50 border border-zinc-200 rounded-full pl-5 pr-12 py-3.5 text-sm font-medium placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-black/5 focus:border-black transition-all shadow-sm"
                                     />
                                     <button
@@ -241,7 +238,6 @@ export default function CommentsSheet() {
                                         <Smile size={20} />
                                     </button>
 
-                                    {/* Input Emoji Picker */}
                                     <div className="absolute bottom-full right-0 mb-4 z-[210]">
                                         <ReactionPicker
                                             visible={showInputEmojiPicker}

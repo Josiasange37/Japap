@@ -1,0 +1,293 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    Heart,
+    MessageCircle,
+    Share2,
+    Repeat2,
+    MoreHorizontal,
+    ThumbsDown,
+    Play,
+    Volume2,
+    AlertCircle,
+    Flag,
+    Copy,
+    ExternalLink
+} from 'lucide-react';
+import type { Post } from '../types';
+import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
+
+interface PostCardProps {
+    post: Post;
+}
+
+export default function PostCard({ post }: PostCardProps) {
+    const { likePost, dislikePost, setActiveCommentsPostId, showToast } = useApp();
+    const { t } = useLanguage();
+    const [isLiked, setIsLiked] = useState(post.liked);
+    const [isDisliked, setIsDisliked] = useState(post.disliked);
+    const [showOptions, setShowOptions] = useState(false);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [isReshared, setIsReshared] = useState(false);
+
+    const isRiskyContent = post.content.toLowerCase().includes('leak') ||
+        post.content.toLowerCase().includes('scandal') ||
+        post.content.length > 500;
+
+    const handleLike = () => {
+        setIsLiked(!isLiked);
+        if (isDisliked) setIsDisliked(false);
+        likePost(post.id);
+    };
+
+    const handleDislike = () => {
+        setIsDisliked(!isDisliked);
+        if (isLiked) setIsLiked(false);
+        dislikePost(post.id);
+    };
+
+    const handleReport = () => {
+        showToast("Report submitted. Our shadow mods are on it");
+        setShowOptions(false);
+    };
+
+    const handleShare = async (method: 'native' | 'copy') => {
+        const shareText = `Vient voir le kongosa du moment sur JAPAP\n\n"${post.content.substring(0, 100)}${post.content.length > 100 ? '...' : ''}"\n\nCheck ça ici: `;
+        const shareUrl = `${window.location.origin}/post/${post.id}`;
+
+        if (method === 'native' && navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'JAPAP - Le Kongosa du Mboa',
+                    text: shareText,
+                    url: shareUrl,
+                });
+                showToast("Partagé avec succès");
+            } catch (err) {
+                console.error("Error sharing:", err);
+            }
+        } else {
+            try {
+                await navigator.clipboard.writeText(`${shareText}${shareUrl}`);
+                showToast("Lien du kongosa copié");
+            } catch (err) {
+                showToast("Échec de la copie. Réessaie.");
+            }
+        }
+        setShowShareModal(false);
+    };
+
+    const handleReshare = () => {
+        setIsReshared(!isReshared);
+        if (!isReshared) {
+            showToast("Scoop repartagé sur ton profil");
+        }
+    };
+
+    return (
+        <motion.article
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`bg-[var(--card)] border-b md:border md:rounded-[32px] border-[var(--border)] overflow-hidden mb-0 md:mb-6 group transition-all ${isRiskyContent ? 'border-amber-500/20 shadow-inner' : ''}`}
+        >
+            {isRiskyContent && (
+                <div className="bg-amber-500/10 px-4 py-1.5 flex items-center gap-2">
+                    <AlertCircle size={14} className="text-amber-500" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-amber-600">Sensitive Content - Ads Offline</span>
+                </div>
+            )}
+
+            {/* Header */}
+            <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] border border-[var(--border)] overflow-hidden flex items-center justify-center font-bold">
+                        {post.author.avatar ? (
+                            <img src={post.author.avatar} alt={post.author.username} className="w-full h-full object-cover" />
+                        ) : (
+                            <span>{(post.author.username || 'A')[0].toUpperCase()}</span>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-sm hover:underline cursor-pointer">{post.author.username || 'Anonymous'}</h3>
+                        <p className="text-[10px] text-[var(--text-muted)] font-medium">
+                            {new Date(post.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Gossip
+                        </p>
+                    </div>
+                </div>
+
+                <div className="relative">
+                    <button
+                        onClick={() => setShowOptions(!showOptions)}
+                        className={`p-2 hover:bg-[var(--bg-secondary)] rounded-full transition-colors ${showOptions ? 'bg-[var(--bg-secondary)]' : ''}`}
+                    >
+                        <MoreHorizontal size={20} className="text-[var(--text-muted)]" />
+                    </button>
+
+                    <AnimatePresence>
+                        {showOptions && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                className="absolute right-0 mt-2 w-48 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl z-50 overflow-hidden"
+                            >
+                                <button
+                                    onClick={handleReport}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-500/10 transition-colors"
+                                >
+                                    <Flag size={18} /> Report Scoop
+                                </button>
+                                <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-[var(--text-muted)] hover:bg-[var(--bg-secondary)] transition-colors">
+                                    <AlertCircle size={18} /> Why this ad?
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </div>
+
+            {/* Content */}
+            <div className="px-4 pb-4">
+                {post.type === 'text' && (
+                    <p className="text-[17px] leading-relaxed font-normal whitespace-pre-wrap">
+                        {post.content}
+                    </p>
+                )}
+
+                {post.type === 'image' && (
+                    <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] mb-2">
+                        <img
+                            src={post.content}
+                            alt="Gossip Media"
+                            className="w-full h-auto max-h-[500px] object-cover hover:scale-[1.02] transition-transform duration-500"
+                        />
+                    </div>
+                )}
+
+                {(post.type === 'video' || post.type === 'audio') && (
+                    <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="relative z-10 w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
+                            <Play fill="white" className="text-white ml-1" size={32} />
+                        </div>
+                        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white text-xs font-bold">
+                            <div className="flex items-center gap-2">
+                                <Volume2 size={16} />
+                                <span>PREVIEW - 0:15 / 0:45</span>
+                            </div>
+                            <span className="px-2 py-1 bg-white/20 backdrop-blur-md rounded-md">NSFW BLUR OFF</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Stats Quick View */}
+            <div className="px-4 py-2 border-t border-[var(--border)] flex items-center gap-4 text-[11px] font-bold text-[var(--text-muted)]">
+                <span>{post.stats.views.toLocaleString()} {t('post.views')}</span>
+                <span>{post.stats.comments} {t('post.comments')}</span>
+                <span>{Math.round((post.stats.likes / (post.stats.likes + post.stats.dislikes + 1)) * 100)}% {t('post.hot')}</span>
+            </div>
+
+            {/* Interactions */}
+            <div className="px-2 py-1 flex items-center justify-between border-t border-[var(--border)]">
+                <div className="flex items-center gap-1">
+                    <ActionButton
+                        icon={Heart}
+                        active={isLiked}
+                        activeColor="text-pink-500"
+                        count={post.stats.likes + (isLiked ? 1 : 0)}
+                        onClick={handleLike}
+                    />
+                    <ActionButton
+                        icon={ThumbsDown}
+                        active={isDisliked}
+                        activeColor="text-blue-500"
+                        count={post.stats.dislikes + (isDisliked ? 1 : 0)}
+                        onClick={handleDislike}
+                    />
+                    <ActionButton
+                        icon={MessageCircle}
+                        onClick={() => setActiveCommentsPostId(post.id)}
+                        count={post.stats.comments}
+                    />
+                </div>
+
+                <div className="flex items-center gap-1">
+                    <ActionButton
+                        icon={Repeat2}
+                        active={isReshared}
+                        activeColor="text-emerald-500"
+                        onClick={handleReshare}
+                    />
+                    <div className="relative">
+                        <ActionButton icon={Share2} onClick={() => setShowShareModal(!showShareModal)} />
+
+                        <AnimatePresence>
+                            {showShareModal && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.9, y: 10, x: -100 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0, x: -150 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 10, x: -100 }}
+                                    className="absolute bottom-12 right-0 w-56 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl z-50 overflow-hidden p-2"
+                                >
+                                    <div className="p-2 border-b border-[var(--border)] mb-1">
+                                        <p className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest text-center">Partager le kongosa</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleShare('native')}
+                                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-[var(--bg-secondary)] rounded-xl transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <ExternalLink size={18} />
+                                            <span>Via l'App</span>
+                                        </div>
+                                        <ChevronRight size={14} className="opacity-30" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleShare('copy')}
+                                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-[var(--bg-secondary)] rounded-xl transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Copy size={18} />
+                                            <span>Copier le lien</span>
+                                        </div>
+                                        <ChevronRight size={14} className="opacity-30" />
+                                    </button>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                </div>
+            </div>
+        </motion.article>
+    );
+}
+
+function ActionButton({
+    icon: Icon,
+    active,
+    activeColor,
+    count,
+    onClick
+}: {
+    icon: any,
+    active?: boolean,
+    activeColor?: string,
+    count?: number,
+    onClick?: () => void
+}) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex items-center gap-2 px-3 py-2 rounded-2xl transition-all hover:bg-[var(--bg-secondary)] ${active ? activeColor : 'text-[var(--text-muted)]'}`}
+        >
+            <Icon size={20} className={active ? 'fill-current' : ''} />
+            {count !== undefined && <span className="text-sm font-bold">{count}</span>}
+        </button>
+    );
+}
+
+function ChevronRight({ size, className }: { size: number, className?: string }) {
+    return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6" /></svg>
+}

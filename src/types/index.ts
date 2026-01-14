@@ -4,6 +4,7 @@ export interface Post {
     id: string;
     type: MediaType;
     content: string; // URL for media, text content for text/link
+    timestamp: number;
     caption?: string;
     author: {
         id: string;
@@ -27,10 +28,10 @@ export interface Post {
     // Interactions
     disliked?: boolean;
     userReaction?: string;
-    commentsList?: Comment[];
+    commentsList?: GossipComment[];
 }
 
-export interface Comment {
+export interface GossipComment {
     id: string;
     text: string;
     author: {

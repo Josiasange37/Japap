@@ -1,182 +1,171 @@
-import { useState } from 'react';
-import { Settings, Edit3, Check, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+    Settings,
+    Edit3,
+    Check,
+    X,
+    Grid,
+    Heart,
+    MessageSquare,
+    Zap,
+    Bell,
+    LogOut,
+    Camera
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useLanguage } from '../context/LanguageContext';
+import Layout from '../components/Layout';
+import PostCard from '../components/PostCard';
 
 export default function Profile() {
     const { user, posts, updateUser } = useApp();
+    const { t } = useLanguage();
     const [showEdit, setShowEdit] = useState(false);
-
-    // Edit States
     const [editBio, setEditBio] = useState(user?.bio || '');
-
-    // Tab State
-    type Tab = 'moments' | 'likes';
-    const [activeTab, setActiveTab] = useState<Tab>('moments');
+    const [editPseudo, setEditPseudo] = useState(user?.pseudo || '');
+    const [activeTab, setActiveTab] = useState<'posts' | 'likes' | 'saved'>('posts');
 
     if (!user) return null;
 
-    // Filter posts based on active tab
-    const displayedPosts = posts.filter(p => {
-        if (activeTab === 'moments') {
-            return p.author.id === 'me' || p.author.username === user.pseudo;
-        }
-        if (activeTab === 'likes') {
-            return p.liked;
-        }
-        return false;
-    });
+    const myPosts = posts.filter(p => p.author.username === user.pseudo);
+    const likedPosts = posts.filter(p => p.liked);
 
-    // Calculate total stats for the user (always based on their own posts)
-    const myPosts = posts.filter(p => p.author.id === 'me' || p.author.username === user.pseudo);
-    const totalLikes = myPosts.reduce((acc, curr) => acc + curr.stats.likes, 0);
+    const displayPosts = activeTab === 'posts' ? myPosts : likedPosts;
 
-    const handleSaveProfile = () => {
-        updateUser({ bio: editBio });
-        setShowEdit(false);
-    };
-
-    const handleCancelEdit = () => {
-        setEditBio(user.bio || '');
+    const handleSaveProfile = async () => {
+        await updateUser({ bio: editBio, pseudo: editPseudo });
         setShowEdit(false);
     };
 
     return (
-        <div className="w-full h-full flex flex-col">
-            {/* Cover Image */}
-            <div className="h-40 w-full bg-gradient-to-r from-blue-300 via-purple-300 to-pink-300 relative">
-                <button className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors">
-                    <Settings size={20} />
-                </button>
-            </div>
+        <Layout>
+            <div className="px-4 md:px-0">
+                {/* Profile Header */}
+                <div className="relative mb-8 bg-[var(--card)] border border-[var(--border)] rounded-[40px] overflow-hidden">
+                    {/* Cover Area */}
+                    <div className="h-48 bg-gradient-to-r from-[var(--brand)] via-purple-500 to-blue-500 opacity-20" />
 
-            <div className="px-6 relative flex flex-col items-center -mt-16 text-center flex-1 overflow-y-auto pb-24 no-scrollbar">
-                {/* Avatar */}
-                <div className="w-32 h-32 rounded-full bg-gradient-to-tr from-blue-400 to-purple-400 p-[4px] shadow-xl">
-                    <div className="w-full h-full rounded-full bg-white relative overflow-hidden group">
-                        {user.avatar ? (
-                            <img src={user.avatar} className="object-cover w-full h-full" alt="profile" />
+                    <div className="px-8 pb-8 flex flex-col items-center -mt-20">
+                        {/* Avatar */}
+                        <div className="relative group mb-4">
+                            <div className="w-40 h-40 rounded-full bg-[var(--bg)] p-2 shadow-2xl border border-[var(--border)]">
+                                <div className="w-full h-full rounded-full bg-[var(--bg-secondary)] overflow-hidden flex items-center justify-center">
+                                    {user.avatar ? (
+                                        <img src={user.avatar} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-6xl">👤</span>
+                                    )}
+                                </div>
+                            </div>
+                            <button className="absolute bottom-2 right-2 p-3 bg-white text-black rounded-full shadow-lg hover:scale-110 transition-transform">
+                                <Camera size={20} />
+                            </button>
+                        </div>
+
+                        {showEdit ? (
+                            <div className="w-full max-w-sm space-y-4">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-4">{t('onboarding.profile.label')}</label>
+                                    <input
+                                        value={editPseudo}
+                                        onChange={(e) => setEditPseudo(e.target.value)}
+                                        className="w-full bg-[var(--bg-secondary)] px-6 py-4 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-[var(--brand)] transition-all"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-4">The Bio</label>
+                                    <textarea
+                                        value={editBio}
+                                        onChange={(e) => setEditBio(e.target.value)}
+                                        className="w-full bg-[var(--bg-secondary)] px-6 py-4 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-[var(--brand)] transition-all h-24 resize-none"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={handleSaveProfile} className="flex-1 bg-black text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase tracking-tighter">
+                                        <Check size={18} /> {t('onboarding.profile.button')}
+                                    </button>
+                                    <button onClick={() => setShowEdit(false)} className="px-6 bg-[var(--bg-secondary)] py-4 rounded-2xl font-black text-sm active:scale-95 transition-transform">
+                                        <X size={18} />
+                                    </button>
+                                </div>
+                            </div>
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-zinc-100 text-4xl">👤</div>
+                            <div className="text-center">
+                                <div className="flex items-center justify-center gap-2 mb-2">
+                                    <h1 className="font-display text-4xl font-black tracking-tight">{user.pseudo}</h1>
+                                    <button onClick={() => setShowEdit(true)} className="p-2 hover:bg-[var(--bg-secondary)] rounded-full transition-colors text-[var(--text-muted)]">
+                                        <Edit3 size={20} />
+                                    </button>
+                                </div>
+                                <p className="text-[var(--text-muted)] font-bold text-sm max-w-xs mx-auto leading-relaxed">
+                                    {user.bio || "Spilling tea since forever"}
+                                </p>
+
+                                {/* Stats Pill */}
+                                <div className="mt-6 flex bg-[var(--bg-secondary)] p-2 rounded-3xl gap-1">
+                                    <div className="px-6 py-3 bg-[var(--bg)] rounded-2xl border border-[var(--border)]">
+                                        <p className="font-black text-xl">{myPosts.length}</p>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">{t('profile.stats.scoops')}</p>
+                                    </div>
+                                    <div className="px-6 py-3 bg-[var(--bg)] rounded-2xl border border-[var(--border)]">
+                                        <p className="font-black text-xl">{myPosts.reduce((acc, p) => acc + p.stats.likes, 0)}</p>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">{t('profile.stats.clarity')}</p>
+                                    </div>
+                                    <div className="px-6 py-3 bg-[var(--bg)] rounded-2xl border border-[var(--border)]">
+                                        <p className="font-black text-xl">Top 5%</p>
+                                        <p className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">{t('profile.stats.rank')}</p>
+                                    </div>
+                                </div>
+                            </div>
                         )}
-                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                            <span className="text-white text-xs font-bold">CHANGE</span>
-                        </div>
                     </div>
                 </div>
 
-                <div className="mt-4 flex flex-col items-center gap-2 justify-center w-full">
-                    {showEdit ? (
-                        <div className="flex flex-col items-center gap-3 w-full max-w-xs">
-                            <h2 className="text-2xl font-black font-display text-zinc-900">{user.pseudo}</h2>
-                            <textarea
-                                value={editBio}
-                                onChange={(e) => setEditBio(e.target.value)}
-                                placeholder="Edit your bio..."
-                                className="w-full font-medium text-sm text-zinc-600 bg-zinc-100 px-4 py-3 rounded-2xl outline-none text-center resize-none h-24"
-                            />
-                            <div className="flex gap-2">
-                                <button onClick={handleSaveProfile} className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-full font-bold text-sm hover:scale-105 transition-transform">
-                                    <Check size={16} /> Save
-                                </button>
-                                <button onClick={handleCancelEdit} className="flex items-center gap-2 px-4 py-2 bg-zinc-100 text-zinc-600 rounded-full font-bold text-sm hover:bg-zinc-200 transition-colors">
-                                    <X size={16} /> Cancel
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-2xl font-black font-display text-zinc-900">{user.pseudo}</h2>
-                                <button
-                                    onClick={() => setShowEdit(true)}
-                                    className="p-1.5 bg-zinc-100 text-zinc-500 rounded-full hover:bg-zinc-200 transition-colors"
-                                >
-                                    <Edit3 size={14} />
-                                </button>
-                            </div>
-                            <p className="text-zinc-500 font-bold text-sm max-w-[250px] leading-tight">
-                                {user.bio || "No bio yet. Tap edit to add one! ✨"}
-                            </p>
-                        </>
-                    )}
+                {/* Profile Tabs */}
+                <div className="flex gap-4 mb-6 sticky top-20 z-10 py-2 bg-[var(--bg)]">
+                    <TabButton
+                        active={activeTab === 'posts'}
+                        icon={Grid}
+                        label={t('profile.scoops')}
+                        onClick={() => setActiveTab('posts')}
+                    />
+                    <TabButton
+                        active={activeTab === 'likes'}
+                        icon={Heart}
+                        label={t('profile.likes')}
+                        onClick={() => setActiveTab('likes')}
+                    />
                 </div>
 
-                {/* Stats */}
-                <div className="flex gap-4 mt-8 w-full">
-                    <div className="flex-1 py-4 bg-white rounded-2xl flex flex-col items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] border border-zinc-100">
-                        <span className="font-black text-2xl font-display">{myPosts.length}</span>
-                        <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mt-1">Posts</span>
-                    </div>
-                    <div className="flex-1 py-4 bg-white rounded-2xl flex flex-col items-center justify-center shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] border border-zinc-100">
-                        <span className="font-black text-2xl font-display">{totalLikes}</span>
-                        <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-bold mt-1">Likes</span>
-                    </div>
-                </div>
-
-                {/* Content Tabs */}
-                <div className="w-full mt-8">
-                    <div className="flex border-b border-zinc-100 relative">
-                        <button
-                            onClick={() => setActiveTab('moments')}
-                            className={`flex-1 pb-4 text-sm font-bold transition-colors ${activeTab === 'moments' ? 'text-black' : 'text-zinc-400 hover:text-zinc-600'}`}
-                        >
-                            Moments
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('likes')}
-                            className={`flex-1 pb-4 text-sm font-bold transition-colors ${activeTab === 'likes' ? 'text-black' : 'text-zinc-400 hover:text-zinc-600'}`}
-                        >
-                            Likes
-                        </button>
-
-                        {/* Animated Underline */}
-                        <div
-                            className="absolute bottom-0 h-0.5 bg-black transition-all duration-300 ease-[0.23,1,0.32,1]"
-                            style={{
-                                width: '50%',
-                                left: activeTab === 'moments' ? '0%' : '50%'
-                            }}
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 mt-4 w-full">
-                        {displayedPosts.map(post => (
-                            <div key={post.id} className="aspect-square bg-zinc-100 rounded-xl overflow-hidden relative">
-                                {post.type === 'image' && (
-                                    <img src={post.content} className="w-full h-full object-cover" alt="" />
-                                )}
-                                {post.type === 'video' && (
-                                    <div className="w-full h-full bg-black relative">
-                                        <video src={post.content} className="w-full h-full object-cover opacity-80" />
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <span className="text-2xl text-white">🎥</span>
-                                        </div>
-                                    </div>
-                                )}
-                                {post.type === 'audio' && (
-                                    <div className="w-full h-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
-                                        <span className="text-2xl">🎵</span>
-                                    </div>
-                                )}
-                                {post.type === 'text' && (
-                                    <div className="w-full h-full bg-zinc-50 flex items-center justify-center p-2">
-                                        <p className="text-[8px] font-bold text-center line-clamp-3">{post.content}</p>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    {displayedPosts.length === 0 && (
-                        <div className="mt-20 flex flex-col items-center justify-center text-zinc-400">
-                            <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center mb-4 text-2xl grayscale opacity-50">
-                                {activeTab === 'moments' ? '📸' : activeTab === 'likes' ? '❤️' : '💬'}
-                            </div>
-                            <p className="text-sm font-medium">No {activeTab} yet</p>
+                {/* Profile Feed */}
+                <div className="flex flex-col gap-6">
+                    {displayPosts.map(post => (
+                        <PostCard key={post.id} post={post} />
+                    ))}
+                    {displayPosts.length === 0 && (
+                        <div className="py-20 flex flex-col items-center justify-center opacity-30 text-center">
+                            <Zap size={64} className="mb-4" />
+                            <p className="font-black">Nothing to see here yet.<br />Go spill some tea!</p>
                         </div>
                     )}
                 </div>
             </div>
-        </div>
+        </Layout>
+    );
+}
+
+function TabButton({ active, icon: Icon, label, onClick }: { active: boolean, icon: any, label: string, onClick: () => void }) {
+    return (
+        <button
+            onClick={onClick}
+            className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${active
+                ? 'bg-black text-white shadow-xl shadow-black/10'
+                : 'bg-[var(--card)] border border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text)]'
+                }`}
+        >
+            <Icon size={18} />
+            <span className="hidden sm:inline">{label}</span>
+        </button>
     );
 }

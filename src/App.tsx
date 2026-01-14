@@ -1,30 +1,61 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Layout from './components/Layout';
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
-import Create from './pages/Create';
-import RequireOnboarding from './components/RequireOnboarding';
-import { AppProvider } from './context/AppContext';
-import Onboarding from './pages/Onboarding.tsx';
+import Onboarding from './pages/Onboarding';
 import Profile from './pages/Profile';
-import ToastContainer from './components/Toast';
+import CreatePostPage from './pages/Create';
+import Trending from './pages/Trending';
+import Notifications from './pages/Notifications';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import CommunityGuidelines from './pages/CommunityGuidelines';
+import { useApp } from './context/AppContext';
 
-export default function App() {
+function App() {
+  const { user } = useApp();
+
+  // If user hasn't finished onboarding, force them there
+  const isOnboarded = user?.onboarded;
+
   return (
-    <AppProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/onboarding" element={<Onboarding />} />
+    <Routes>
+      <Route
+        path="/onboarding"
+        element={!isOnboarded ? <Onboarding /> : <Navigate to="/" replace />}
+      />
 
-          <Route element={<RequireOnboarding />}>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Home />} />
-              <Route path="create" element={<Create />} />
-              <Route path="profile" element={<Profile />} />
-            </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
-      <ToastContainer />
-    </AppProvider>
+      <Route
+        path="/"
+        element={isOnboarded ? <Home /> : <Navigate to="/onboarding" replace />}
+      />
+
+      <Route
+        path="/profile"
+        element={isOnboarded ? <Profile /> : <Navigate to="/onboarding" replace />}
+      />
+
+      <Route
+        path="/create"
+        element={isOnboarded ? <CreatePostPage /> : <Navigate to="/onboarding" replace />}
+      />
+
+      <Route
+        path="/trending"
+        element={isOnboarded ? <Trending /> : <Navigate to="/onboarding" replace />}
+      />
+
+      <Route
+        path="/notifications"
+        element={isOnboarded ? <Notifications /> : <Navigate to="/onboarding" replace />}
+      />
+
+      {/* Public Pages (Always accessible for AdSense bots) */}
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/guidelines" element={<CommunityGuidelines />} />
+
+      {/* Catch all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
+
+export default App;

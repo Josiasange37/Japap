@@ -1,22 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,100..900;1,100..900&family=Manrope:wght@200..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,100..900;1,100..900&family=Manrope:wght@200..800&family=Outfit:wght@100..900&display=swap');
 
 @import "tailwindcss";
 
+@theme {
+  --font-display: "Archivo", sans-serif;
+  --font-sans: "Outfit", sans-serif;
+  --color-brand: #ff0055; /* Gossip Pink */
+  --color-accent: #00f2ff; /* Volt Blue */
+}
+
 :root {
-  --color-bg: #eff6ff;
-  --color-card: #ffffff;
-  --color-text: #18181b;
-  --color-text-muted: #71717a;
-  --color-accent: #3b82f6;
+  --bg: #ffffff;
+  --bg-secondary: #f4f4f5;
+  --text: #09090b;
+  --text-muted: #71717a;
+  --border: #e4e4e7;
+  --card: #ffffff;
+  --brand: #ff0055;
+  --accent: #00f2ff;
+  --glass: rgba(255, 255, 255, 0.7);
+}
+
+[data-theme='dark'] {
+  --bg: #09090b;
+  --bg-secondary: #18181b;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --border: #27272a;
+  --card: #18181b;
+  --brand: #ff0077;
+  --accent: #00f2ff;
+  --glass: rgba(9, 9, 11, 0.7);
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
-  font-family: 'Manrope', sans-serif;
-  overflow: hidden;
-  /* Prevent scrolling for the app-like feel on the main container, might enable for sub-pages */
-  -webkit-font-smoothing: antialiased;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
 }
 
 .font-display {
@@ -25,7 +47,7 @@ body {
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -33,19 +55,36 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
-  border-radius: 3px;
+  background: var(--border);
+  border-radius: 10px;
 }
 
-/* Utilities */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+/* UI Utilities */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
 }
 
-/* Animation specific */
-.waveform-bar {
-  transition: height 0.15s ease;
+.card-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Animations */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s infinite ease-in-out;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
