@@ -45,6 +45,9 @@ export default function CreatePost() {
             await addPost({
                 content: media || content,
                 type: media ? type : 'text',
+                timestamp: Date.now(),
+                liked: false,
+                disliked: false
             }, isAnonymous);
             showToast(t('create.success'));
             navigate('/');

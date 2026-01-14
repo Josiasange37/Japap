@@ -8,7 +8,7 @@ import type { GossipComment } from '../types';
 
 
 export default function CommentsSheet() {
-    const { posts, addComment, reactToComment, activeCommentsPostId, setActiveCommentsPostId } = useApp();
+    const { posts, addComment, activeCommentsPostId, setActiveCommentsPostId } = useApp();
     const { t } = useLanguage();
     const postId = activeCommentsPostId;
     const onClose = () => setActiveCommentsPostId(null);
@@ -31,7 +31,7 @@ export default function CommentsSheet() {
             text: replyingTo.text
         } : undefined;
 
-        addComment(postId, text.trim(), replyToData);
+        addComment(postId, text.trim());
         setText('');
         setReplyingTo(null);
     };
