@@ -1,0 +1,28 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "true",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "posts": {
+      ".read": "true",
+      "$post_id": {
+        ".write": "auth != null",
+        "author": {
+          "id": {
+            ".validate": "newData.isString()"
+          }
+        },
+        "stats": {
+          ".write": "auth != null"
+        }
+      }
+    },
+    "comments": {
+      ".read": "true",
+      ".write": "auth != null"
+    }
+  }
+}

@@ -1,23 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
-    collection,
-    onSnapshot,
-    query,
-    orderBy,
-    addDoc,
-    updateDoc,
-    doc,
-    increment,
-    arrayUnion,
-    setDoc,
-    serverTimestamp
-} from 'firebase/firestore';
+    ref,
+    onValue,
+    push,
+    set,
+    update,
+    runTransaction,
+    off
+} from 'firebase/database';
 import {
     onAuthStateChanged,
     signInAnonymously
 } from 'firebase/auth';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { db, storage, auth } from '../firebase';
+import { ref as storageRef, uploadString, getDownloadURL } from 'firebase/storage';
+import { rtdb, storage, auth } from '../firebase';
 import type { Post, UserProfile, Comment } from '../types';
 
 export interface Toast {
@@ -91,32 +87,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     }, [user]);
 
-    // Firestore Real-time Posts Sync
+    // Realtime Database Posts Sync
     useEffect(() => {
-        const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const postsData = snapshot.docs.map(doc => ({
-                ...doc.data(),
-                id: doc.id
-            })) as Post[];
-            setPosts(postsData);
+        const postsRef = ref(rtdb, 'posts');
+        onValue(postsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                // Convert object to array and sort by reverse timestamp
+                const postsArray = Object.keys(data).map(key => ({
+                    ...data[key],
+                    id: key
+                })).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)) as Post[];
+                setPosts(postsArray);
+            } else {
+                setPosts([]);
+            }
         }, (error) => {
-            console.error("Firestore sync error:", error);
+            console.error("RTDB sync error:", error);
             showToast("Failed to sync posts", "error");
         });
 
-        return () => unsubscribe();
+        return () => off(postsRef);
     }, []);
 
     const updateUser = async (updates: Partial<UserProfile>) => {
         const newUser = user ? { ...user, ...updates } : updates as UserProfile;
         setUser(newUser);
 
-        // Save to Firestore if we have an authenticated user
         if (auth.currentUser) {
             try {
-                const userRef = doc(db, 'users', auth.currentUser.uid);
-                await setDoc(userRef, newUser, { merge: true });
+                const userRef = ref(rtdb, `users/${auth.currentUser.uid}`);
+                await update(userRef, updates);
             } catch (error) {
                 console.error("Error updating user profile:", error);
             }
@@ -133,10 +134,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
             // Handle base64 upload to Storage if it's media
             if (newPostData.type !== 'text' && newPostData.content.startsWith('data:')) {
-                const storageRef = ref(storage, `posts/${Date.now()}`);
-                await uploadString(storageRef, newPostData.content, 'data_url');
-                mediaUrl = await getDownloadURL(storageRef);
+                const storageRefInstance = storageRef(storage, `posts/${Date.now()}`);
+                await uploadString(storageRefInstance, newPostData.content, 'data_url');
+                mediaUrl = await getDownloadURL(storageRefInstance);
             }
+
+            const postsRef = ref(rtdb, 'posts');
+            const newPostRef = push(postsRef);
 
             const postDoc = {
                 author: {
@@ -147,12 +151,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 stats: { likes: 0, comments: 0, views: 0, dislikes: 0 },
                 liked: false,
                 disliked: false,
-                timestamp: serverTimestamp(),
+                timestamp: Date.now(),
                 ...newPostData,
                 content: mediaUrl
             };
 
-            await addDoc(collection(db, 'posts'), postDoc);
+            await set(newPostRef, postDoc);
             showToast("Posted successfully!");
         } catch (error) {
             console.error("Error adding post:", error);
@@ -161,20 +165,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const likePost = async (id: string) => {
-        const post = posts.find(p => p.id === id);
-        if (!post) return;
-
-        const wasLiked = post.liked;
-        const wasDisliked = post.disliked;
-        const newLiked = !wasLiked;
-
+        const postRef = ref(rtdb, `posts/${id}`);
         try {
-            const postRef = doc(db, 'posts', id);
-            await updateDoc(postRef, {
-                liked: newLiked,
-                disliked: wasLiked ? false : wasDisliked ? false : post.disliked,
-                'stats.likes': increment(newLiked ? 1 : -1),
-                'stats.dislikes': increment(wasDisliked ? -1 : 0)
+            await runTransaction(postRef, (post) => {
+                if (post) {
+                    const wasLiked = post.liked;
+                    const wasDisliked = post.disliked;
+                    const newLiked = !wasLiked;
+
+                    post.liked = newLiked;
+                    post.disliked = wasLiked ? false : wasDisliked ? false : post.disliked;
+
+                    if (!post.stats) post.stats = { likes: 0, dislikes: 0, comments: 0, views: 0 };
+                    post.stats.likes = (post.stats.likes || 0) + (newLiked ? 1 : -1);
+                    post.stats.dislikes = (post.stats.dislikes || 0) - (wasDisliked ? 1 : 0);
+                }
+                return post;
             });
         } catch (error) {
             console.error("Error liking post:", error);
@@ -182,20 +188,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const dislikePost = async (id: string) => {
-        const post = posts.find(p => p.id === id);
-        if (!post) return;
-
-        const wasLiked = post.liked;
-        const wasDisliked = post.disliked;
-        const newDisliked = !wasDisliked;
-
+        const postRef = ref(rtdb, `posts/${id}`);
         try {
-            const postRef = doc(db, 'posts', id);
-            await updateDoc(postRef, {
-                disliked: newDisliked,
-                liked: wasDisliked ? false : wasLiked ? false : post.liked,
-                'stats.dislikes': increment(newDisliked ? 1 : -1),
-                'stats.likes': increment(wasLiked ? -1 : 0)
+            await runTransaction(postRef, (post) => {
+                if (post) {
+                    const wasLiked = post.liked;
+                    const wasDisliked = post.disliked;
+                    const newDisliked = !wasDisliked;
+
+                    post.disliked = newDisliked;
+                    post.liked = wasDisliked ? false : wasLiked ? false : post.liked;
+
+                    if (!post.stats) post.stats = { likes: 0, dislikes: 0, comments: 0, views: 0 };
+                    post.stats.dislikes = (post.stats.dislikes || 0) + (newDisliked ? 1 : -1);
+                    post.stats.likes = (post.stats.likes || 0) - (wasLiked ? 1 : 0);
+                }
+                return post;
             });
         } catch (error) {
             console.error("Error disliking post:", error);
@@ -203,13 +211,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const reactToPost = async (id: string, emoji: string | null) => {
-        const post = posts.find(p => p.id === id);
-        if (!post) return;
-
+        const postRef = ref(rtdb, `posts/${id}/userReaction`);
         try {
-            const postRef = doc(db, 'posts', id);
-            await updateDoc(postRef, {
-                userReaction: (post.userReaction === emoji) ? null : (emoji || null)
+            await runTransaction(postRef, (current) => {
+                return (current === emoji) ? null : (emoji || null);
             });
         } catch (error) {
             console.error("Error reacting to post:", error);
@@ -219,8 +224,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const addComment = async (postId: string, text: string, replyTo?: Comment['replyTo']) => {
         if (!user) return;
 
+        const commentsRef = ref(rtdb, `posts/${postId}/commentsList`);
+        const newCommentRef = push(commentsRef);
+
         const newComment: Comment = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: newCommentRef.key || Math.random().toString(36).substr(2, 9),
             text,
             author: { id: user.pseudo, username: user.pseudo, avatar: user.avatar },
             timestamp: Date.now(),
@@ -228,21 +236,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
 
         try {
-            const postRef = doc(db, 'posts', postId);
-            await updateDoc(postRef, {
-                commentsList: arrayUnion(newComment),
-                'stats.comments': increment(1)
-            });
+            await set(newCommentRef, newComment);
+            const statsRef = ref(rtdb, `posts/${postId}/stats/comments`);
+            await runTransaction(statsRef, (count) => (count || 0) + 1);
         } catch (error) {
             console.error("Error adding comment:", error);
         }
     };
 
     const reactToComment = async (postId: string, commentId: string, emoji: string | null) => {
-        // Firebase array updates are tricky for nested items. 
-        // For now, we'll refetch and replace or handle locally if needed.
-        // Simplified: update the whole list or use a separate collection for comments.
-        // For this demo, we'll stick to a simple replacement.
+        // Find comment index and update emoji
         const post = posts.find(p => p.id === postId);
         if (!post || !post.commentsList) return;
 
@@ -254,10 +257,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
 
         try {
-            const postRef = doc(db, 'posts', postId);
-            await updateDoc(postRef, {
-                commentsList: updatedComments
-            });
+            const commentsRef = ref(rtdb, `posts/${postId}/commentsList`);
+            await set(commentsRef, updatedComments);
         } catch (error) {
             console.error("Error reacting to comment:", error);
         }
