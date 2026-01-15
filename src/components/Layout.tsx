@@ -24,18 +24,23 @@ import { Link, useLocation } from 'react-router-dom';
 import PWAInstallBanner from './PWAInstallBanner';
 import AdUnit from './AdUnit';
 
+import { useScrollDirection } from '../hooks/useScrollDirection';
+
 export default function Layout({ children }: { children: React.ReactNode }) {
     const { theme, toggleTheme } = useTheme();
-    const { user } = useApp();
+    const { user, notifications, trendingCount } = useApp();
     const { language, setLanguage, t } = useLanguage();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
+    const scrollDirection = useScrollDirection();
+
+    const unreadCount = notifications.length;
 
     const navItems = [
         { icon: Home, label: t('nav.home'), path: '/' },
-        { icon: TrendingUp, label: t('nav.trending'), path: '/trending' },
+        { icon: TrendingUp, label: t('nav.trending'), path: '/trending', badge: trendingCount },
         { icon: PlusSquare, label: t('nav.create'), path: '/create' },
-        { icon: Bell, label: t('nav.notifications'), path: '/notifications' },
+        { icon: Bell, label: t('nav.notifications'), path: '/notifications', badge: unreadCount },
         { icon: User, label: t('nav.profile'), path: '/profile' },
     ];
 
@@ -55,12 +60,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         <Link
                             key={item.label}
                             to={item.path}
-                            className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold transition-all group ${location.pathname === item.path
+                            className={`relative flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold transition-all group ${location.pathname === item.path
                                 ? 'bg-[var(--brand)] text-white shadow-lg shadow-pink-500/20'
                                 : 'hover:bg-[var(--bg-secondary)]'
                                 }`}
                         >
-                            <item.icon size={22} className={location.pathname === item.path ? '' : 'text-[var(--text-muted)] group-hover:text-[var(--text)]'} />
+                            <div className="relative">
+                                <item.icon size={22} className={location.pathname === item.path ? '' : 'text-[var(--text-muted)] group-hover:text-[var(--text)]'} />
+                                {(item.badge || 0) > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border-2 border-[var(--card)]">
+                                        {item.badge}
+                                    </span>
+                                )}
+                            </div>
                             {item.label}
                         </Link>
                     ))}
@@ -126,8 +138,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col min-w-0">
-                {/* Mobile Header */}
-                <header className="lg:hidden h-16 border-b border-[var(--border)] bg-[var(--glass)] backdrop-blur-xl sticky top-0 z-40 px-4 flex items-center justify-between">
+                {/* Mobile Header - Auto-hide on scroll */}
+                <header className={`lg:hidden h-16 border-b border-[var(--border)] bg-[var(--glass)] backdrop-blur-xl sticky top-0 z-40 px-4 flex items-center justify-between transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'}`}>
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-[var(--brand)] rounded-lg flex items-center justify-center">
                             <Zap className="text-white fill-white" size={18} />
@@ -166,14 +178,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
                 <PWAInstallBanner />
 
-                <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--glass)] backdrop-blur-xl border-t border-[var(--border)] z-40 flex items-center justify-around px-4">
+                <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[var(--glass)] backdrop-blur-xl border-t border-[var(--border)] z-40 flex items-center justify-around px-4 pb-safe">
                     {navItems.slice(0, 4).map((item) => (
                         <Link
                             key={item.label}
                             to={item.path}
-                            className={`p-2 rounded-xl transition-all ${location.pathname === item.path ? 'bg-[var(--brand)] text-white shadow-lg' : 'text-[var(--text-muted)]'}`}
+                            className={`relative p-2 rounded-xl transition-all ${location.pathname === item.path ? 'bg-[var(--brand)] text-white shadow-lg' : 'text-[var(--text-muted)]'}`}
                         >
-                            <item.icon size={24} />
+                            <div className="relative">
+                                <item.icon size={24} />
+                                {(item.badge || 0) > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] font-black w-3.5 h-3.5 flex items-center justify-center rounded-full border border-[var(--card)]">
+                                        {item.badge}
+                                    </span>
+                                )}
+                            </div>
                         </Link>
                     ))}
                     <Link to="/profile" className={`w-8 h-8 rounded-full border-2 overflow-hidden ${location.pathname === '/profile' ? 'border-[var(--brand)]' : 'border-[var(--border)]'}`}>
@@ -245,6 +264,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                             EN
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="mt-4">
+                                    <AdUnit slot="9876543210" format="rectangle" className="opacity-90" />
                                 </div>
 
                                 <div className="pt-8 border-t border-[var(--border)]">

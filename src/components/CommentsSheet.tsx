@@ -183,10 +183,10 @@ export default function CommentsSheet() {
                                                 visible={reactingCommentId === comment.id}
                                                 position="relative"
                                                 onSelect={(emoji) => {
-                                                    if (postId) {
-                                                        reactToComment(postId, comment.id, emoji);
-                                                        setReactingCommentId(null);
-                                                    }
+                                                    // if (postId) {
+                                                    //     reactToComment(postId, comment.id, emoji);
+                                                    //     setReactingCommentId(null);
+                                                    // }
                                                 }}
                                                 onClose={() => setReactingCommentId(null)}
                                             />

@@ -2,79 +2,66 @@ import React from 'react';
 import Layout from '../components/Layout';
 import { motion } from 'framer-motion';
 import { Bell, Zap, TrendingUp, MessageCircle, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { useScrollDirection } from '../hooks/useScrollDirection';
+
+import { useApp } from '../context/AppContext';
 
 export default function Notifications() {
     const { t } = useLanguage();
+    const navigate = useNavigate();
+    const scrollDirection = useScrollDirection();
+    const { notifications, removeNotification } = useApp();
 
-    const notifications = [
-        {
-            id: 1,
-            type: 'trending',
-            title: t('notifications.trending.title'),
-            message: t('notifications.trending.desc').replace('{name}', 'Le nouveau restaurant'),
-            time: '2m',
-            icon: TrendingUp,
-            color: 'bg-orange-500'
-        },
-        {
-            id: 2,
-            type: 'new_post',
-            title: t('notifications.new.title'),
-            message: t('notifications.new.desc').replace('{name}', 'Campus Life'),
-            time: '15m',
-            icon: Zap,
-            color: 'bg-pink-500'
-        },
-        {
-            id: 3,
-            type: 'reaction',
-            title: t('notifications.like.title'),
-            message: t('notifications.like.desc').replace('{name}', 'Anonymous Gossip'),
-            time: '1h',
-            icon: Heart,
-            color: 'bg-red-500'
-        },
-        {
-            id: 4,
-            type: 'comment',
-            title: t('notifications.comment.title'),
-            message: t('notifications.comment.desc').replace('{name}', 'Quelqu\'un'),
-            time: '3h',
-            icon: MessageCircle,
-            color: 'bg-blue-500'
-        }
-    ];
+    const iconMap: Record<string, any> = {
+        trending: TrendingUp,
+        new_post: Zap,
+        reaction: Heart,
+        comment: MessageCircle
+    };
+
+    const getIcon = (type: string) => iconMap[type] || Bell;
+
+    const handleNotificationClick = (type: string, id: number) => {
+        removeNotification(id);
+        navigate(`/`);
+    };
 
     return (
         <Layout>
             <div className="px-4 md:px-0">
-                <div className="mb-8">
+                <div className={`sticky ${scrollDirection === 'down' ? 'top-0' : 'top-16'} md:top-0 z-30 bg-[var(--bg)]/95 backdrop-blur-md pt-4 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent md:backdrop-blur-none md:static md:z-0 mb-4 md:mb-8 border-b border-[var(--border)] md:border-none transition-[top] duration-300`}>
                     <h1 className="font-display text-4xl font-black tracking-tight">{t('notifications.title')}</h1>
                     <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-[0.2em] mt-1">{t('notifications.subtitle')}</p>
                 </div>
 
                 <div className="space-y-4">
-                    {notifications.map((n, i) => (
-                        <motion.div
-                            key={n.id}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            className="bg-[var(--card)] border border-[var(--border)] p-5 rounded-[28px] flex gap-4 items-start hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer group"
-                        >
-                            <div className={`w-12 h-12 rounded-2xl ${n.color} flex items-center justify-center text-white shadow-lg shrink-0 group-hover:scale-110 transition-transform`}>
-                                <n.icon size={24} />
-                            </div>
-                            <div className="flex-1">
-                                <div className="flex justify-between items-start mb-1">
-                                    <h3 className="font-bold text-lg leading-none">{n.title}</h3>
-                                    <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">{n.time}</span>
+                    {notifications.map((n, i) => {
+                        const Icon = getIcon(n.type);
+                        const color = n.type === 'trending' ? 'bg-orange-500' : n.type === 'new_post' ? 'bg-pink-500' : n.type === 'reaction' ? 'bg-red-500' : 'bg-blue-500';
+                        return (
+                            <motion.div
+                                key={n.id}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                onClick={() => handleNotificationClick(n.type, n.id)}
+                                className="bg-[var(--card)] border border-[var(--border)] p-5 rounded-[28px] flex gap-4 items-start hover:bg-[var(--bg-secondary)] transition-colors cursor-pointer group"
+                            >
+                                <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center text-white shadow-lg shrink-0 group-hover:scale-110 transition-transform`}>
+                                    <Icon size={24} />
                                 </div>
-                                <p className="text-[var(--text-muted)] font-medium leading-relaxed">{n.message}</p>
-                            </div>
-                        </motion.div>
-                    ))}
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h3 className="font-bold text-lg leading-none">{n.title}</h3>
+                                        <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">{n.time}</span>
+                                    </div>
+                                    <p className="text-[var(--text-muted)] font-medium leading-relaxed">{n.message}</p>
+                                </div>
+                            </motion.div>
+                        )
+                    })}
                 </div>
 
                 {notifications.length === 0 && (

@@ -22,6 +22,11 @@ interface AppContextType {
     activeCommentsPostId: string | null;
     setActiveCommentsPostId: (id: string | null) => void;
     isLoading: boolean;
+    deletePost: (id: string) => Promise<void>;
+    notifications: any[];
+    removeNotification: (id: number) => void;
+    trendingCount: number;
+    clearTrendingCount: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -36,6 +41,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [trendingCount, setTrendingCount] = useState(3);
+    const [notifications, setNotifications] = useState([
+        { id: 1, type: 'trending', title: 'Trending Alert', message: 'Campus life is heating up!', time: '2m', read: false },
+        { id: 2, type: 'new_post', title: 'New Gossip', message: 'Check out the latest scoop in Campus Life', time: '15m', read: false },
+        { id: 3, type: 'reaction', title: 'New Like', message: 'Anonymous Gossip liked your post', time: '1h', read: false },
+        { id: 4, type: 'comment', title: 'New Comment', message: 'Someone commented on your post', time: '3h', read: false }
+    ]);
 
     // Initial Data Fetch
     useEffect(() => {
@@ -140,6 +152,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }));
     };
 
+    const deletePost = async (id: string) => {
+        // Optimistic update
+        setPosts(prev => prev.filter(p => p.id !== id));
+        showToast("Post deleted successfully", 'success');
+        // await JapapAPI.deletePost(id); // API call integration later
+    };
+
+    const removeNotification = (id: number) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+    };
+
+    const clearTrendingCount = () => {
+        setTrendingCount(0);
+    };
+
     return (
         <AppContext.Provider value={{
             user,
@@ -154,7 +181,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             removeToast,
             activeCommentsPostId,
             setActiveCommentsPostId,
-            isLoading
+            isLoading,
+            deletePost,
+            notifications,
+            removeNotification,
+            trendingCount,
+            clearTrendingCount
         }}>
             {children}
 

@@ -11,11 +11,18 @@ import {
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import PostCard from '../components/PostCard';
+import { useScrollDirection } from '../hooks/useScrollDirection';
 
 export default function Trending() {
-    const { posts } = useApp();
+    const { posts, clearTrendingCount } = useApp();
     const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState('');
+    const scrollDirection = useScrollDirection();
+
+    // Clear badge on mount
+    React.useEffect(() => {
+        clearTrendingCount();
+    }, []);
 
     const hashtags = [
         { name: 'CampusTea', count: '1.2k', trending: true },
@@ -25,26 +32,32 @@ export default function Trending() {
         { name: 'SecretParties', count: '150', trending: false },
     ];
 
-    const trendingPosts = posts.slice().sort((a, b) => (b.stats.views + b.stats.likes) - (a.stats.views + a.stats.likes));
+    const trendingPosts = posts.slice().sort((a, b) => {
+        const scoreA = (a.stats.views * 0.1) + (a.stats.likes * 1) + (a.stats.comments * 2);
+        const scoreB = (b.stats.views * 0.1) + (b.stats.likes * 1) + (b.stats.comments * 2);
+        return scoreB - scoreA;
+    });
 
     return (
         <Layout>
             <div className="px-4 md:px-0">
-                <div className="mb-8">
-                    <h1 className="font-display text-4xl font-black tracking-tight">{t('trending.title')}</h1>
-                    <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-[0.2em] mt-1">{t('trending.subtitle')}</p>
-                </div>
+                <div className={`sticky ${scrollDirection === 'down' ? 'top-0' : 'top-16'} md:top-0 z-30 bg-[var(--bg)]/95 backdrop-blur-md pt-4 pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent md:backdrop-blur-none md:static md:z-0 transition-[top] duration-300`}>
+                    <div className="mb-8">
+                        <h1 className="font-display text-4xl font-black tracking-tight">{t('trending.title')}</h1>
+                        <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-[0.2em] mt-1">{t('trending.subtitle')}</p>
+                    </div>
 
-                {/* Search Bar */}
-                <div className="relative mb-8 group">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--brand)] transition-colors" size={20} />
-                    <input
-                        type="text"
-                        placeholder={t('trending.search')}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-[var(--card)] border border-[var(--border)] pl-16 pr-6 py-5 rounded-[32px] font-bold outline-none focus:ring-4 focus:ring-[var(--brand)]/10 focus:border-[var(--brand)] transition-all"
-                    />
+                    {/* Search Bar */}
+                    <div className="relative mb-8 group">
+                        <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-[var(--text-muted)] group-focus-within:text-[var(--brand)] transition-colors" size={20} />
+                        <input
+                            type="text"
+                            placeholder={t('trending.search')}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-[var(--card)] border border-[var(--border)] pl-16 pr-6 py-5 rounded-[32px] font-bold outline-none focus:ring-4 focus:ring-[var(--brand)]/10 focus:border-[var(--brand)] transition-all"
+                        />
+                    </div>
                 </div>
 
                 {/* Trending Hashtags Grid */}

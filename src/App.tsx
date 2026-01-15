@@ -9,9 +9,11 @@ import Notifications from './pages/Notifications';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import CommunityGuidelines from './pages/CommunityGuidelines';
 import { useApp } from './context/AppContext';
+import { usePeriodicNotification } from './hooks/usePeriodicNotification';
 
 function App() {
   const { user } = useApp();
+  usePeriodicNotification();
 
   // If user hasn't finished onboarding, force them there
   const isOnboarded = user?.onboarded;

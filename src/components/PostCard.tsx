@@ -12,28 +12,44 @@ import {
     AlertCircle,
     Flag,
     Copy,
-    ExternalLink
+    ExternalLink,
+    Trash2
 } from 'lucide-react';
 import type { Post } from '../types';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
+import { parseTextWithHashtags } from '../utils/text';
+
+import AdOverlay from './AdOverlay';
 
 interface PostCardProps {
     post: Post;
 }
 
 export default function PostCard({ post }: PostCardProps) {
-    const { likePost, dislikePost, setActiveCommentsPostId, showToast } = useApp();
+    const { likePost, dislikePost, setActiveCommentsPostId, showToast, deletePost, user } = useApp();
     const { t } = useLanguage();
     const [isLiked, setIsLiked] = useState(post.liked);
     const [isDisliked, setIsDisliked] = useState(post.disliked);
     const [showOptions, setShowOptions] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [isReshared, setIsReshared] = useState(false);
+    const [showHeartAnimation, setShowHeartAnimation] = useState(false);
+
+    const isViral = post.stats.views > 1000 || post.stats.likes > 100;
+    const [showAd, setShowAd] = useState(true);
 
     const isRiskyContent = post.content.toLowerCase().includes('leak') ||
         post.content.toLowerCase().includes('scandal') ||
         post.content.length > 500;
+
+    const handleDoubleTap = () => {
+        if (!isLiked) {
+            handleLike();
+        }
+        setShowHeartAnimation(true);
+        setTimeout(() => setShowHeartAnimation(false), 800);
+    };
 
     const handleLike = () => {
         setIsLiked(!isLiked);
@@ -138,6 +154,17 @@ export default function PostCard({ post }: PostCardProps) {
                                 >
                                     <Flag size={18} /> Report Scoop
                                 </button>
+                                {(post.author.username === 'Anonymous Gossip' || post.author.username === user?.pseudo) && (
+                                    <button
+                                        onClick={() => {
+                                            deletePost(post.id);
+                                            setShowOptions(false);
+                                        }}
+                                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-[var(--text-muted)] hover:bg-[var(--bg-secondary)] transition-colors"
+                                    >
+                                        <Trash2 size={18} /> Delete Scoop
+                                    </button>
+                                )}
                                 <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-[var(--text-muted)] hover:bg-[var(--bg-secondary)] transition-colors">
                                     <AlertCircle size={18} /> Why this ad?
                                 </button>
@@ -147,20 +174,38 @@ export default function PostCard({ post }: PostCardProps) {
                 </div>
             </div>
 
-            {/* Content */}
-            <div className="px-4 pb-4">
+            {/* Content - Double Tap Area */}
+            <div
+                className="px-4 pb-4 relative cursor-pointer"
+                onDoubleClick={handleDoubleTap}
+            >
+                {/* Heart Animation Overlay */}
+                <AnimatePresence>
+                    {showHeartAnimation && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0, x: "-50%", y: "-50%" }}
+                            animate={{ opacity: 1, scale: 1.5 }}
+                            exit={{ opacity: 0, scale: 0 }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                            className="absolute top-1/2 left-1/2 z-20 pointer-events-none"
+                        >
+                            <Heart size={80} className="fill-pink-500 text-pink-500 drop-shadow-2xl" />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {post.type === 'text' && (
-                    <p className="text-[17px] leading-relaxed font-normal whitespace-pre-wrap">
-                        {post.content}
+                    <p className="text-[17px] leading-relaxed font-normal whitespace-pre-wrap select-none">
+                        {parseTextWithHashtags(post.content)}
                     </p>
                 )}
 
                 {post.type === 'image' && (
-                    <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] mb-2">
+                    <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] mb-2 relative">
                         <img
                             src={post.content}
                             alt="Gossip Media"
-                            className="w-full h-auto max-h-[500px] object-cover hover:scale-[1.02] transition-transform duration-500"
+                            className="w-full h-auto max-h-[500px] object-cover"
                         />
                     </div>
                 )}
@@ -278,13 +323,19 @@ function ActionButton({
     onClick?: () => void
 }) {
     return (
-        <button
+        <motion.button
+            whileTap={{ scale: 0.8 }}
             onClick={onClick}
             className={`flex items-center gap-2 px-3 py-2 rounded-2xl transition-all hover:bg-[var(--bg-secondary)] ${active ? activeColor : 'text-[var(--text-muted)]'}`}
         >
-            <Icon size={20} className={active ? 'fill-current' : ''} />
+            <motion.div
+                animate={active ? { scale: [1, 1.4, 1] } : {}}
+                transition={{ duration: 0.4 }}
+            >
+                <Icon size={20} className={active ? 'fill-current' : ''} />
+            </motion.div>
             {count !== undefined && <span className="text-sm font-bold">{count}</span>}
-        </button>
+        </motion.button>
     );
 }
 

@@ -59,6 +59,19 @@ body {
   border-radius: 10px;
 }
 
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    display: none;
+    width: 0px;
+    background: transparent;
+  }
+  
+  body {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+}
+
 /* UI Utilities */
 .glass {
   background: var(--glass);
