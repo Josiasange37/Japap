@@ -4,6 +4,7 @@ import { JapapAPI } from '../services/api';
 import { ref, set, get, child, onValue, push, update, runTransaction, serverTimestamp, query, limitToLast, onChildAdded } from 'firebase/database';
 import { signInAnonymously } from 'firebase/auth';
 import { rtdb, auth } from '../firebase';
+import { formatRelativeTime } from '../utils/time';
 
 export interface Toast {
     id: string;
@@ -49,12 +50,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [trendingCount, setTrendingCount] = useState(3);
-    const [notifications, setNotifications] = useState([
-        { id: 1, type: 'trending', title: 'Trending Alert', message: 'Campus life is heating up!', time: '2m', read: false },
-        { id: 2, type: 'new_post', title: 'New Gossip', message: 'Check out the latest scoop in Campus Life', time: '15m', read: false },
-        { id: 3, type: 'reaction', title: 'New Like', message: 'Anonymous Gossip liked your post', time: '1h', read: false },
-        { id: 4, type: 'comment', title: 'New Comment', message: 'Someone commented on your post', time: '3h', read: false }
-    ]);
+    const [notifications, setNotifications] = useState<any[]>([]);
 
     const removeToast = (id: string) => {
         setToasts(prev => prev.filter(t => t.id !== id));
@@ -177,47 +173,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
     }, [user?.pseudo]);
 
-    // Personal Notifications Listener (Direct mentions/likes)
+    // Personal Notifications Listener (Full List Sync)
     useEffect(() => {
-        if (!user?.pseudo) return;
-        const normalizedPseudo = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
-        const myNotifsRef = query(ref(rtdb, `notifications/${normalizedPseudo}`), limitToLast(1));
+        if (!user?.pseudo) {
+            setNotifications([]);
+            return;
+        }
 
-        const unsub = onChildAdded(myNotifsRef, (snapshot) => {
+        const normalizedPseudo = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const myNotifsRef = query(ref(rtdb, `notifications/${normalizedPseudo}`), limitToLast(50));
+
+        const unsubscribe = onValue(myNotifsRef, (snapshot) => {
             const data = snapshot.val();
-            if (data && data.timestamp > Date.now() - 10000) { // Only show recent ones (last 10s) to avoid spam on load
-                if (Notification.permission === 'granted') {
-                    const n = new Notification('Japap Social', {
-                        body: data.message,
-                        icon: '/vite.svg' // Ensure path is correct
-                    });
-                    n.onclick = () => window.focus();
+            if (data) {
+                const loadedNotifs = Object.keys(data).map(key => ({
+                    id: key,
+                    ...data[key],
+                    time: formatRelativeTime(data[key].timestamp)
+                })).sort((a, b) => b.timestamp - a.timestamp);
+
+                setNotifications(loadedNotifs);
+
+                // Show push notification for the very latest one if it's new
+                const latest = loadedNotifs[0];
+                if (latest && latest.timestamp > Date.now() - 5000) {
+                    if (Notification.permission === 'granted') {
+                        const n = new Notification('Japap Social', {
+                            body: latest.message,
+                            icon: '/vite.svg'
+                        });
+                        n.onclick = () => window.focus();
+                    }
+                    showToast(latest.message, 'info');
                 }
-                showToast(data.message, 'info');
-                // Update internal notification state
-                setNotifications(prev => [{
-                    id: Date.now(),
-                    type: data.type || 'info',
-                    title: 'New Interaction',
-                    message: data.message,
-                    time: 'Just now',
-                    read: false
-                }, ...prev]);
+            } else {
+                setNotifications([]);
             }
         });
 
-        return () => unsub();
+        return () => unsubscribe();
     }, [user?.pseudo]);
 
     // Helper to send notification
-    const sendSystemNotification = async (recipientPseudo: string, type: string, message: string, postId: string) => {
+    const sendSystemNotification = async (recipientPseudo: string, type: string, message: string, postId: string, title?: string) => {
         if (!recipientPseudo || !user?.pseudo || recipientPseudo === user.pseudo) return;
 
         const normalizedRecipient = recipientPseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
         const notifRef = push(ref(rtdb, `notifications/${normalizedRecipient}`));
+
+        // Map types to better titles if none provided
+        const defaultTitle =
+            type === 'reaction' ? 'New Reaction!' :
+                type === 'comment' ? 'New Comment!' :
+                    type === 'mention' ? 'Mentioned You!' :
+                        'New Update';
+
         await set(notifRef, {
             type,
             from: user.pseudo,
+            title: title || defaultTitle,
             message,
             postId,
             timestamp: serverTimestamp(),
@@ -411,15 +425,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
             return post;
         });
+
+        // Notification Side Effect
+        const targetPost = posts.find(p => p.id === postId);
+        if (targetPost && targetPost.author.username) {
+            sendSystemNotification(targetPost.author.username, 'reaction', `${user.pseudo} reacted to your post`, postId);
+        }
     };
 
     const addCommentReaction = async (postId: string, commentId: string, emoji: string) => {
         if (!user?.pseudo) return;
 
         const commentRef = ref(rtdb, `comments/${postId}/${commentId}`);
-        // We need to update two things potentially: 
-        // 1. The reaction count on the comment
-        // 2. The user's reaction on the comment (to toggle or switch)
+        let commentAuthor: string | null = null;
+        let isNewReaction = false;
 
         await runTransaction(commentRef, (comment) => {
             if (comment) {
@@ -427,13 +446,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 if (!comment.userReactions) comment.userReactions = {};
 
                 const oldReaction = comment.userReactions[user.pseudo];
+                commentAuthor = comment.author.username;
 
                 if (oldReaction === emoji) {
                     // Toggle off
                     comment.reactions[emoji] = (comment.reactions[emoji] || 1) - 1;
                     if (comment.reactions[emoji] <= 0) delete comment.reactions[emoji];
                     delete comment.userReactions[user.pseudo];
-                    comment.userReaction = null; // For local optimistic updates if we were mapping it, but `userReactions` map is source of truth
                 } else {
                     // Swap or Add
                     if (oldReaction) {
@@ -442,13 +461,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
                     comment.reactions[emoji] = (comment.reactions[emoji] || 0) + 1;
                     comment.userReactions[user.pseudo] = emoji;
+                    isNewReaction = true;
                 }
             }
             return comment;
         });
 
-        // After transaction, we might want to manually trigger a local update if the subscription doesn't catch it fast enough? 
-        // The onValue subscription in CommentsSheet should handle it.
+        if (isNewReaction && commentAuthor && commentAuthor !== user.pseudo) {
+            sendSystemNotification(commentAuthor, 'reaction', `${user.pseudo} reacted ${emoji} to your comment`, postId);
+        }
     };
 
     /**
