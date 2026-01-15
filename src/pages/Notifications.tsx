@@ -11,7 +11,6 @@ import { useApp } from '../context/AppContext';
 export default function Notifications() {
     const { t } = useLanguage();
     const navigate = useNavigate();
-    const scrollDirection = useScrollDirection();
     const { notifications, removeNotification } = useApp();
 
     const iconMap: Record<string, any> = {
@@ -31,7 +30,7 @@ export default function Notifications() {
     return (
         <Layout>
             <div className="px-4 md:px-0">
-                <div className={`sticky ${scrollDirection === 'down' ? 'top-0' : 'top-16'} md:top-0 z-30 bg-[var(--bg)]/95 backdrop-blur-md pt-4 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent md:backdrop-blur-none md:static md:z-0 mb-4 md:mb-8 border-b border-[var(--border)] md:border-none transition-[top] duration-300`}>
+                <div className="sticky top-0 z-30 bg-[var(--bg)]/95 backdrop-blur-md pt-4 pb-4 -mx-4 px-4 md:mx-0 md:px-0 md:bg-transparent md:backdrop-blur-none md:static md:z-0 mb-4 md:mb-8 border-b border-[var(--border)] md:border-none">
                     <h1 className="font-display text-4xl font-black tracking-tight">{t('notifications.title')}</h1>
                     <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-[0.2em] mt-1">{t('notifications.subtitle')}</p>
                 </div>
