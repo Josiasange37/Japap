@@ -29,6 +29,7 @@ export interface Post {
     disliked?: boolean;
     userReaction?: string;
     commentsList?: GossipComment[];
+    category?: string;
 }
 
 export interface GossipComment {
