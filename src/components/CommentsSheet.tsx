@@ -167,9 +167,9 @@ export default function CommentsSheet() {
                                         </div>
                                         <button
                                             onClick={() => setReplyingTo(null)}
-                                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2"
+                                            className="p-2 hover:bg-white/10 rounded-full transition-colors ml-2"
                                         >
-                                            <X size={16} className="text-zinc-400" />
+                                            <X size={18} className="text-zinc-400" />
                                         </button>
                                     </motion.div>
                                 )}

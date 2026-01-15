@@ -64,7 +64,7 @@ export default function CommentRow({
                 dragElastic={0.2}
                 dragSnapToOrigin
                 onDragEnd={(_, info) => {
-                    if (info.offset.x > 50) {
+                    if (info.offset.x > 80) {
                         onReply(comment);
                     }
                 }}
