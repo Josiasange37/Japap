@@ -38,12 +38,16 @@ export default function PWAInstallBanner() {
 
         // Also check for notification permission
         if ('Notification' in window && Notification.permission === 'default') {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            // If installed (standalone), ask sooner (1.5s), otherwise wait longer (8s)
+            const delay = isStandalone ? 1500 : 8000;
+
             const timeout = setTimeout(() => {
                 if (!show) {
                     setStep('notify');
                     setShow(true);
                 }
-            }, 8000);
+            }, delay);
             return () => clearTimeout(timeout);
         }
 
