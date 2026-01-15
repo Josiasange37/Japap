@@ -1,12 +1,12 @@
-import React, { Fragment, useState } from 'react';
+import React, { Fragment } from 'react';
 import Layout from '../components/Layout';
 import PostCard from '../components/PostCard';
-import CommentSection from '../components/CommentSection';
+import CommentsSheet from '../components/CommentsSheet';
 import AdUnit from '../components/AdUnit';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'framer-motion';
-import { TrendingUp, RefreshCw, Zap, Star, Briefcase, Heart, GraduationCap } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 
 export default function Home() {
     const { posts, isLoading } = useApp();
@@ -29,9 +29,8 @@ export default function Home() {
                             transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                             className="w-12 h-12 border-4 border-[var(--bg-secondary)] border-t-[var(--brand)] rounded-full mb-6"
                         />
-                        <p className="text-[var(--text-muted)] font-black text-xs uppercase tracking-widest animate-pulse">
-                            Patienter pour le nouveux japap du moment...
-                        </p>
+                        Patienter pour le nouveau japap du moment...
+
                     </div>
                 ) : posts.length > 0 ? (
                     <>
@@ -66,7 +65,7 @@ export default function Home() {
                 )}
             </section>
 
-            <CommentSection />
+            <CommentsSheet />
         </Layout>
     );
 }

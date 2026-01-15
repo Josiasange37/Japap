@@ -21,6 +21,7 @@ interface AppContextType {
     likePost: (id: string) => Promise<void>;
     dislikePost: (id: string) => Promise<void>;
     addReaction: (postId: string, emoji: string) => Promise<void>;
+    addCommentReaction: (postId: string, commentId: string, emoji: string) => Promise<void>;
     addComment: (postId: string, text: string) => Promise<void>;
     toasts: Toast[];
     showToast: (message: string, type?: Toast['type']) => void;
@@ -399,15 +400,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
     };
 
+    const addCommentReaction = async (postId: string, commentId: string, emoji: string) => {
+        if (!user?.pseudo) return;
+
+        const commentRef = ref(rtdb, `comments/${postId}/${commentId}`);
+        // We need to update two things potentially: 
+        // 1. The reaction count on the comment
+        // 2. The user's reaction on the comment (to toggle or switch)
+
+        await runTransaction(commentRef, (comment) => {
+            if (comment) {
+                if (!comment.reactions) comment.reactions = {};
+                if (!comment.userReactions) comment.userReactions = {};
+
+                const oldReaction = comment.userReactions[user.pseudo];
+
+                if (oldReaction === emoji) {
+                    // Toggle off
+                    comment.reactions[emoji] = (comment.reactions[emoji] || 1) - 1;
+                    if (comment.reactions[emoji] <= 0) delete comment.reactions[emoji];
+                    delete comment.userReactions[user.pseudo];
+                    comment.userReaction = null; // For local optimistic updates if we were mapping it, but `userReactions` map is source of truth
+                } else {
+                    // Swap or Add
+                    if (oldReaction) {
+                        comment.reactions[oldReaction] = (comment.reactions[oldReaction] || 1) - 1;
+                        if (comment.reactions[oldReaction] <= 0) delete comment.reactions[oldReaction];
+                    }
+                    comment.reactions[emoji] = (comment.reactions[emoji] || 0) + 1;
+                    comment.userReactions[user.pseudo] = emoji;
+                }
+            }
+            return comment;
+        });
+
+        // After transaction, we might want to manually trigger a local update if the subscription doesn't catch it fast enough? 
+        // The onValue subscription in CommentsSheet should handle it.
+    };
+
+    /**
+     * Helper to add a comment
+     */
     const addComment = async (postId: string, text: string) => {
         if (!user) return;
+
+        console.log("AppContext: addComment called for postId:", postId);
 
         const newCommentRef = push(ref(rtdb, `comments/${postId}`));
         const newComment: GossipComment = {
             id: newCommentRef.key as string,
             text,
             author: { id: user.pseudo, username: user.pseudo, avatar: user.avatar },
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            reactions: {},
+            userReactions: {}
         };
 
         try {
@@ -459,6 +505,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             likePost,
             dislikePost,
             addReaction,
+            addCommentReaction,
             addComment,
             toasts,
             showToast,

@@ -10,7 +10,7 @@ import type { GossipComment } from '../types';
 
 
 export default function CommentsSheet() {
-    const { addComment, activeCommentsPostId, setActiveCommentsPostId } = useApp();
+    const { addComment, activeCommentsPostId, setActiveCommentsPostId, addCommentReaction } = useApp();
     const { t } = useLanguage();
     const postId = activeCommentsPostId;
     const onClose = () => setActiveCommentsPostId(null);
@@ -35,6 +35,7 @@ export default function CommentsSheet() {
 
         const unsubscribe = onValue(commentsRef, (snapshot) => {
             const data = snapshot.val();
+            console.log("CommentsSheet: Fetching for postId:", postId, "Data exists:", !!data, "Data:", data);
             if (data) {
                 const loadedComments = Object.values(data) as GossipComment[];
                 // Sort by timestamp desc (newest first) or asc? Usually comments are Oldest -> Newest (asc). 
@@ -214,10 +215,10 @@ export default function CommentsSheet() {
                                                 visible={reactingCommentId === comment.id}
                                                 position="relative"
                                                 onSelect={(emoji) => {
-                                                    // if (postId) {
-                                                    //     reactToComment(postId, comment.id, emoji);
-                                                    //     setReactingCommentId(null);
-                                                    // }
+                                                    if (postId && reactingCommentId) {
+                                                        addCommentReaction(postId, reactingCommentId, emoji);
+                                                        setReactingCommentId(null);
+                                                    }
                                                 }}
                                                 onClose={() => setReactingCommentId(null)}
                                             />

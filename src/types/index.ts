@@ -48,6 +48,8 @@ export interface GossipComment {
         text: string;
     };
     userReaction?: string;
+    reactions?: Record<string, number>;
+    userReactions?: Record<string, string>;
 }
 
 export interface UserProfile {
