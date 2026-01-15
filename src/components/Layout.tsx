@@ -50,8 +50,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {/* Desktop Sidebar */}
             <aside className="hidden lg:flex flex-col w-72 border-r border-[var(--border)] h-screen sticky top-0 px-6 py-8 bg-[var(--card)]">
                 <div className="flex items-center gap-2 mb-12 px-2">
-                    <div className="w-10 h-10 bg-[var(--brand)] rounded-xl flex items-center justify-center shadow-lg shadow-pink-500/20">
-                        <Zap className="text-white fill-white" size={24} />
+                    <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg shadow-pink-500/20">
+                        <img src="/app-icon.jpg" alt="Japap Logo" className="w-full h-full object-cover" />
                     </div>
                     <span className="font-display text-2xl font-black tracking-tight tracking-tighter italic">JAPAP</span>
                 </div>
@@ -142,8 +142,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {/* Mobile Header - Auto-hide on scroll */}
                 <header className={`lg:hidden h-16 border-b border-[var(--border)] bg-[var(--glass)] backdrop-blur-xl sticky top-0 z-40 px-4 flex items-center justify-between transition-transform duration-300 ${isAtTop ? 'translate-y-0' : '-translate-y-full'}`}>
                     <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-[var(--brand)] rounded-lg flex items-center justify-center">
-                            <Zap className="text-white fill-white" size={18} />
+                        <div className="w-8 h-8 rounded-lg overflow-hidden">
+                            <img src="/app-icon.jpg" alt="Japap Logo" className="w-full h-full object-cover" />
                         </div>
                         <span className="font-display text-xl font-black italic tracking-tighter">JAPAP</span>
                     </div>
@@ -224,8 +224,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             </button>
 
                             <div className="flex items-center gap-2 mb-12">
-                                <div className="w-10 h-10 bg-[var(--brand)] rounded-xl flex items-center justify-center">
-                                    <Zap className="text-white fill-white" size={24} />
+                                <div className="w-10 h-10 rounded-xl overflow-hidden">
+                                    <img src="/app-icon.jpg" alt="Japap Logo" className="w-full h-full object-cover" />
                                 </div>
                                 <span className="font-display text-2xl font-black italic tracking-tighter">JAPAP</span>
                             </div>
