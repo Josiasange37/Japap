@@ -5,7 +5,7 @@ import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import ReactionPicker from './ReactionPicker';
 import CommentRow from './CommentRow';
-import { ref, onValue, query, orderByChild } from 'firebase/database';
+import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { rtdb } from '../firebase';
 import type { GossipComment } from '../types';
 import { getUserColor } from '../utils/colors';
@@ -33,7 +33,8 @@ export default function CommentsSheet() {
         }
 
         setIsLoadingComments(true);
-        const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'));
+        // Optimize: Load only the last 20 comments initially for speed
+        const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'), limitToLast(20));
 
         const unsubscribe = onValue(commentsRef, (snapshot) => {
             const data = snapshot.val();
