@@ -108,10 +108,10 @@ export default function PostCard({ post }: PostCardProps) {
         <motion.article
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`bg-[var(--card)] border-b md:border md:rounded-[32px] border-[var(--border)] overflow-hidden mb-0 md:mb-6 group transition-all ${isRiskyContent ? 'border-amber-500/20 shadow-inner' : ''}`}
+            className={`bg-[var(--card)] border-b md:border md:rounded-[32px] border-[var(--border)] mb-0 md:mb-6 group transition-all ${isRiskyContent ? 'border-amber-500/20 shadow-inner' : ''}`}
         >
             {isRiskyContent && (
-                <div className="bg-amber-500/10 px-4 py-1.5 flex items-center gap-2">
+                <div className="bg-amber-500/10 px-4 py-1.5 flex items-center gap-2 md:rounded-t-[32px]">
                     <AlertCircle size={14} className="text-amber-500" />
                     <span className="text-[9px] font-black uppercase tracking-widest text-amber-600">Sensitive Content - Ads Offline</span>
                 </div>
