@@ -14,6 +14,21 @@ interface CommentRowProps {
     containerRef: React.RefObject<HTMLDivElement | null>;
 }
 
+// Helper to highlight mentions
+const formatCommentText = (text: string) => {
+    const parts = text.split(/(@\w+)/g);
+    return parts.map((part, index) => {
+        if (part.startsWith('@')) {
+            return (
+                <span key={index} className="text-blue-400 font-bold cursor-pointer hover:underline">
+                    {part}
+                </span>
+            );
+        }
+        return part;
+    });
+};
+
 export default function CommentRow({
     comment,
     onReply,
@@ -100,15 +115,17 @@ export default function CommentRow({
                         </div>
                     </div>
                     {comment.replyTo && (
-                        <div className="bg-white/5 border-l-[3px] border-white/20 px-3 py-2 my-1 rounded-r-xl max-w-[95%] shadow-sm">
-                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">
+                        <div className="bg-[#1f2c34] border-l-4 border-[#00a884] rounded-md px-3 py-2 mb-2 max-w-full shadow-sm bg-opacity-40">
+                            <p className="text-[10px] font-bold text-[#00a884] uppercase tracking-wide mb-0.5">
                                 {comment.replyTo.username.startsWith('@') ? comment.replyTo.username : `@${comment.replyTo.username}`}
                             </p>
-                            <p className="text-[11px] text-zinc-400 line-clamp-1 italic font-medium">"{comment.replyTo.text}"</p>
+                            <p className="text-xs text-zinc-300 line-clamp-1">{comment.replyTo.text}</p>
                         </div>
                     )}
-                    <div className="relative inline-block pr-2">
-                        <p className="text-sm text-zinc-200 leading-relaxed font-medium whitespace-pre-wrap break-words">{comment.text}</p>
+                    <div className="relative inline-block pr-2 w-full">
+                        <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap break-words">
+                            {formatCommentText(comment.text)}
+                        </p>
 
                         <AnimatePresence>
                             {comment.userReaction && (

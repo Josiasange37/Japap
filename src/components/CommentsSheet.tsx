@@ -11,7 +11,7 @@ import type { GossipComment } from '../types';
 
 
 export default function CommentsSheet() {
-    const { addComment, activeCommentsPostId, setActiveCommentsPostId, addCommentReaction } = useApp();
+    const { addComment, activeCommentsPostId, setActiveCommentsPostId, addCommentReaction, user } = useApp();
     const { t } = useLanguage();
     const postId = activeCommentsPostId;
     const onClose = () => setActiveCommentsPostId(null);
@@ -39,10 +39,16 @@ export default function CommentsSheet() {
             console.log("CommentsSheet: Fetching for postId:", postId, "Data exists:", !!data, "Data:", data);
             if (data) {
                 const loadedComments = Object.values(data) as GossipComment[];
-                // Sort by timestamp desc (newest first) or asc? Usually comments are Oldest -> Newest (asc). 
-                // Chat style is usually Newest at bottom.
-                // Let's keep existing order behavior: Array.
-                // If data is object, Object.values order is not guaranteed. Sort it.
+
+                // Map userReactions to userReaction for the current user
+                if (user?.pseudo) {
+                    loadedComments.forEach(comment => {
+                        if (comment.userReactions && comment.userReactions[user.pseudo]) {
+                            comment.userReaction = comment.userReactions[user.pseudo];
+                        }
+                    });
+                }
+
                 loadedComments.sort((a, b) => a.timestamp - b.timestamp);
                 console.log("CommentsSheet: loadedComments:", loadedComments);
                 setComments(loadedComments);
