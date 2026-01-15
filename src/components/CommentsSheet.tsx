@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Reply as ReplyIcon, Smile } from 'lucide-react';
+import { X, Send, Smile } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import ReactionPicker from './ReactionPicker';
+import CommentRow from './CommentRow';
 import { ref, onValue, query, orderByChild } from 'firebase/database';
 import { rtdb } from '../firebase';
 import type { GossipComment } from '../types';
@@ -19,6 +20,7 @@ export default function CommentsSheet() {
     const [reactingCommentId, setReactingCommentId] = useState<string | null>(null);
     const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const [comments, setComments] = useState<GossipComment[]>([]);
     const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -26,7 +28,6 @@ export default function CommentsSheet() {
     // Realtime Comments Listener
     useEffect(() => {
         if (!postId) {
-            setComments([]);
             return;
         }
 
@@ -107,122 +108,29 @@ export default function CommentsSheet() {
                         </div>
 
                         {/* Comments List */}
-                        <div className="flex-1 overflow-y-auto pt-4 pb-12 flex flex-col gap-1">
+                        <div ref={containerRef} className="flex-1 overflow-y-auto pt-4 pb-12 flex flex-col gap-1">
                             {comments.length === 0 ? (
                                 <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 px-6 text-center">
                                     <p className="text-sm font-medium">{isLoadingComments ? "Loading comments..." : t('comment.empty')}</p>
                                 </div>
                             ) : (
                                 comments.map((comment: GossipComment) => (
-                                    <div key={comment.id} className="relative group/comment group select-none">
-                                        <motion.div
-                                            drag="x"
-                                            dragConstraints={{ left: -100, right: 0 }}
-                                            dragElastic={0.4}
-                                            dragSnapToOrigin
-                                            onDragEnd={(_, info) => {
-                                                if (info.offset.x < -50) {
-                                                    setReplyingTo(comment);
-                                                }
-                                            }}
-                                            onPointerDown={() => {
-                                                const timer = setTimeout(() => {
-                                                    setReactingCommentId(comment.id);
-                                                    if (window.navigator.vibrate) window.navigator.vibrate(50);
-                                                }, 600);
-
-                                                const cancel = () => {
-                                                    clearTimeout(timer);
-                                                    window.removeEventListener('pointerup', cancel);
-                                                    window.removeEventListener('pointermove', cancel);
-                                                    window.removeEventListener('pointercancel', cancel);
-                                                };
-
-                                                window.addEventListener('pointerup', cancel);
-                                                window.addEventListener('pointermove', (e) => {
-                                                    if (Math.abs(e.movementX) > 5 || Math.abs(e.movementY) > 5) {
-                                                        cancel();
-                                                    }
-                                                });
-                                                window.addEventListener('pointercancel', cancel);
-                                            }}
-                                            whileTap={{ scale: 0.99, backgroundColor: 'rgba(255,255,255,0.02)' }}
-                                            className="flex gap-3 bg-[#09090b] relative z-10 py-3 px-6 cursor-grab active:cursor-grabbing"
-                                        >
-                                            <div className="w-10 h-10 rounded-full bg-white/5 flex-shrink-0 overflow-hidden mt-0.5 shadow-sm border border-white/5 relative">
-                                                {comment.author.avatar ? (
-                                                    <img src={comment.author.avatar} alt={comment.author.username} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-zinc-800 text-zinc-400 font-bold text-xs uppercase">
-                                                        {(comment.author.username.startsWith('@') ? comment.author.username[1] : comment.author.username[0]) || '?'}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 flex flex-col gap-1 min-w-0">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-sm font-black text-white truncate max-w-[150px]">{comment.author.username}</span>
-                                                        <span className="w-1 h-1 bg-zinc-700 rounded-full" />
-                                                        <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                                                            {new Date(comment.timestamp).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                {comment.replyTo && (
-                                                    <div className="bg-white/5 border-l-[3px] border-white/20 px-3 py-2 my-1 rounded-r-xl max-w-[95%] shadow-sm">
-                                                        <p className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">
-                                                            {comment.replyTo.username.startsWith('@') ? comment.replyTo.username : `@${comment.replyTo.username}`}
-                                                        </p>
-                                                        <p className="text-[11px] text-zinc-400 line-clamp-1 italic font-medium">"{comment.replyTo.text}"</p>
-                                                    </div>
-                                                )}
-                                                <div className="relative inline-block pr-2">
-                                                    <p className="text-sm text-zinc-200 leading-relaxed font-medium whitespace-pre-wrap break-words">{comment.text}</p>
-
-                                                    <AnimatePresence>
-                                                        {comment.userReaction && (
-                                                            <motion.div
-                                                                initial={{ scale: 0, opacity: 0, y: 10 }}
-                                                                animate={{ scale: 1, opacity: 1, y: 0 }}
-                                                                exit={{ scale: 0, opacity: 0 }}
-                                                                whileHover={{ scale: 1.2 }}
-                                                                whileTap={{ scale: 0.9 }}
-                                                                className="absolute -bottom-4 -right-2 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] border border-zinc-100 rounded-full px-2 py-0.5 min-w-[28px] h-7 flex items-center justify-center text-sm cursor-pointer z-30 hover:border-zinc-200 transition-colors"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setReactingCommentId(comment.id);
-                                                                }}
-                                                            >
-                                                                <span className="leading-none">{comment.userReaction}</span>
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-
-                                        {/* Swipe-to-reply indicator */}
-                                        <div className="absolute inset-y-0 right-0 w-24 flex items-center justify-center pointer-events-none pr-6">
-                                            <div className="flex flex-col items-center gap-1 opacity-20">
-                                                <ReplyIcon size={22} className="text-white" />
-                                                <span className="text-[8px] font-black uppercase text-white">Reply</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="absolute top-0 right-0 z-[100]">
-                                            <ReactionPicker
-                                                visible={reactingCommentId === comment.id}
-                                                position="relative"
-                                                onSelect={(emoji) => {
-                                                    if (postId && reactingCommentId) {
-                                                        addCommentReaction(postId, reactingCommentId, emoji);
-                                                        setReactingCommentId(null);
-                                                    }
-                                                }}
-                                                onClose={() => setReactingCommentId(null)}
-                                            />
-                                        </div>
-                                    </div>
+                                    <CommentRow
+                                        key={comment.id}
+                                        comment={comment}
+                                        onReply={(c) => {
+                                            setReplyingTo(c);
+                                        }}
+                                        onReactionSelect={(commentId, emoji) => {
+                                            if (postId) {
+                                                addCommentReaction(postId, commentId, emoji);
+                                                setReactingCommentId(null);
+                                            }
+                                        }}
+                                        activeReactionId={reactingCommentId}
+                                        setActiveReactionId={setReactingCommentId}
+                                        containerRef={containerRef}
+                                    />
                                 ))
                             )}
                         </div>
