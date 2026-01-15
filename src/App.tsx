@@ -16,7 +16,7 @@ function App() {
   usePeriodicNotification();
 
   // If user hasn't finished onboarding, force them there
-  const isOnboarded = user?.onboarded;
+  const isOnboarded = user?.onboarded && user?.pseudo;
 
   return (
     <Routes>

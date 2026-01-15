@@ -17,6 +17,7 @@ export interface Post {
         views: number;
         dislikes: number;
     };
+    reactions?: Record<string, number>; // e.g. { "🔥": 12, "😂": 4 }
     liked?: boolean;
     // Audio specific
     title?: string;

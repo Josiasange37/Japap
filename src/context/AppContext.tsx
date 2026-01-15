@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
-import { ref, set, get, child } from 'firebase/database';
+import { ref, set, get, child, onValue, push, update, runTransaction, serverTimestamp } from 'firebase/database';
 import { rtdb } from '../firebase';
 
 export interface Toast {
@@ -19,6 +19,7 @@ interface AppContextType {
     addPost: (post: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous?: boolean) => Promise<void>;
     likePost: (id: string) => Promise<void>;
     dislikePost: (id: string) => Promise<void>;
+    addReaction: (postId: string, emoji: string) => Promise<void>;
     addComment: (postId: string, text: string) => Promise<void>;
     toasts: Toast[];
     showToast: (message: string, type?: Toast['type']) => void;
@@ -54,19 +55,37 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ]);
 
     // Initial Data Fetch
+    // Realtime Data Fetch
     useEffect(() => {
-        const loadInitialData = async () => {
-            try {
-                const fetchedPosts = await JapapAPI.getPosts();
-                setPosts(fetchedPosts);
-            } catch (err) {
-                console.error("Failed to load posts:", err);
-            } finally {
-                setIsLoading(false);
+        const postsRef = ref(rtdb, 'posts');
+        const unsubscribe = onValue(postsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const loadedPosts = Object.keys(data).map(key => ({
+                    id: key,
+                    ...data[key],
+                    // Ensure stats exist
+                    stats: {
+                        likes: 0,
+                        dislikes: 0,
+                        comments: 0,
+                        views: 0,
+                        ...data[key].stats
+                    },
+                    // Check if current user liked/disliked/reacted
+                    liked: user?.pseudo ? data[key].users?.[user.pseudo]?.liked : false,
+                    disliked: user?.pseudo ? data[key].users?.[user.pseudo]?.disliked : false,
+                    userReaction: user?.pseudo ? data[key].users?.[user.pseudo]?.reaction : null
+                })).sort((a, b) => b.timestamp - a.timestamp);
+                setPosts(loadedPosts);
+            } else {
+                setPosts([]);
             }
-        };
-        loadInitialData();
-    }, []);
+            setIsLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user?.pseudo]); // Re-run when user changes to update "liked" status
 
     const showToast = (message: string, type: Toast['type'] = 'success') => {
         const id = Date.now().toString();
@@ -138,52 +157,122 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             ? { id: 'anon', username: 'Anonymous Gossip', avatar: null }
             : { id: user?.pseudo || 'anon', username: user?.pseudo || 'Anonymous', avatar: user?.avatar || null };
 
-        const newPost = await JapapAPI.createPost({
+        const newPostRef = push(ref(rtdb, 'posts'));
+        const newPost = {
             ...newPostData,
-            author
-        });
+            author,
+            timestamp: serverTimestamp(),
+            stats: { likes: 0, dislikes: 0, comments: 0, views: 0 },
+            reactions: {}
+        };
 
-        setPosts(prev => [newPost, ...prev]);
+        try {
+            await set(newPostRef, newPost);
+            showToast("Scoop posted successfully!", "success");
+        } catch (error) {
+            console.error("Error creating post:", error);
+            showToast("Failed to post scoop.", "error");
+        }
     };
 
     const likePost = async (id: string) => {
-        await JapapAPI.toggleLike(id);
-        setPosts(prev => prev.map(p => {
-            if (p.id === id) {
-                const wasLiked = p.liked;
-                return {
-                    ...p,
-                    liked: !wasLiked,
-                    disliked: false,
-                    stats: {
-                        ...p.stats,
-                        likes: p.stats.likes + (wasLiked ? -1 : 1),
-                        dislikes: p.disliked ? p.stats.dislikes - 1 : p.stats.dislikes
+        if (!user?.pseudo) return;
+        const postRef = ref(rtdb, `posts/${id}`);
+        const userInteractionRef = child(postRef, `users/${user.pseudo}`);
+
+        await runTransaction(postRef, (post) => {
+            if (post) {
+                if (!post.stats) post.stats = { likes: 0, dislikes: 0, comments: 0, views: 0 };
+
+                // How to handle this cleanly in a transaction without reading `users` subnode easily?
+                // In RTDB transactions, we get the whole node.
+                const users = post.users || {};
+                const userState = users[user.pseudo] || {};
+                const wasLiked = userState.liked;
+
+                if (wasLiked) {
+                    post.stats.likes = (post.stats.likes || 1) - 1;
+                    userState.liked = false;
+                } else {
+                    post.stats.likes = (post.stats.likes || 0) + 1;
+                    userState.liked = true;
+                    // If disliked, remove dislike
+                    if (userState.disliked) {
+                        post.stats.dislikes = (post.stats.dislikes || 1) - 1;
+                        userState.disliked = false;
                     }
-                };
+                }
+
+                if (!post.users) post.users = {};
+                post.users[user.pseudo] = userState;
             }
-            return p;
-        }));
+            return post;
+        });
     };
 
     const dislikePost = async (id: string) => {
-        await JapapAPI.toggleDislike(id);
-        setPosts(prev => prev.map(p => {
-            if (p.id === id) {
-                const wasDisliked = p.disliked;
-                return {
-                    ...p,
-                    disliked: !wasDisliked,
-                    liked: false,
-                    stats: {
-                        ...p.stats,
-                        dislikes: p.stats.dislikes + (wasDisliked ? -1 : 1),
-                        likes: p.liked ? p.stats.likes - 1 : p.stats.likes
+        if (!user?.pseudo) return;
+        const postRef = ref(rtdb, `posts/${id}`);
+
+        await runTransaction(postRef, (post) => {
+            if (post) {
+                if (!post.stats) post.stats = { likes: 0, dislikes: 0, comments: 0, views: 0 };
+
+                const users = post.users || {};
+                const userState = users[user.pseudo] || {};
+                const wasDisliked = userState.disliked;
+
+                if (wasDisliked) {
+                    post.stats.dislikes = (post.stats.dislikes || 1) - 1;
+                    userState.disliked = false;
+                } else {
+                    post.stats.dislikes = (post.stats.dislikes || 0) + 1;
+                    userState.disliked = true;
+                    // If liked, remove like
+                    if (userState.liked) {
+                        post.stats.likes = (post.stats.likes || 1) - 1;
+                        userState.liked = false;
                     }
-                };
+                }
+
+                if (!post.users) post.users = {};
+                post.users[user.pseudo] = userState;
             }
-            return p;
-        }));
+            return post;
+        });
+    };
+
+    const addReaction = async (postId: string, emoji: string) => {
+        if (!user?.pseudo) return;
+        const postRef = ref(rtdb, `posts/${postId}`);
+
+        await runTransaction(postRef, (post) => {
+            if (post) {
+                if (!post.reactions) post.reactions = {};
+                const users = post.users || {};
+                const userState = users[user.pseudo] || {};
+                const oldReaction = userState.reaction;
+
+                if (oldReaction === emoji) {
+                    // Toggle off
+                    post.reactions[emoji] = (post.reactions[emoji] || 1) - 1;
+                    if (post.reactions[emoji] <= 0) delete post.reactions[emoji];
+                    userState.reaction = null;
+                } else {
+                    // Swap or Add
+                    if (oldReaction) {
+                        post.reactions[oldReaction] = (post.reactions[oldReaction] || 1) - 1;
+                        if (post.reactions[oldReaction] <= 0) delete post.reactions[oldReaction];
+                    }
+                    post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
+                    userState.reaction = emoji;
+                }
+
+                if (!post.users) post.users = {};
+                post.users[user.pseudo] = userState;
+            }
+            return post;
+        });
     };
 
     const addComment = async (postId: string, text: string) => {
@@ -227,6 +316,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             addPost,
             likePost,
             dislikePost,
+            addReaction,
             addComment,
             toasts,
             showToast,

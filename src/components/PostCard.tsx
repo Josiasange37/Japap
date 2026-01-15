@@ -13,7 +13,8 @@ import {
     Flag,
     Copy,
     ExternalLink,
-    Trash2
+    Trash2,
+    SmilePlus
 } from 'lucide-react';
 import type { Post } from '../types';
 import { useApp } from '../context/AppContext';
@@ -21,16 +22,18 @@ import { useLanguage } from '../context/LanguageContext';
 import { parseTextWithHashtags } from '../utils/text';
 
 import AdOverlay from './AdOverlay';
+import ReactionPicker from './ReactionPicker';
 
 interface PostCardProps {
     post: Post;
 }
 
 export default function PostCard({ post }: PostCardProps) {
-    const { likePost, dislikePost, setActiveCommentsPostId, showToast, deletePost, user } = useApp();
+    const { likePost, dislikePost, setActiveCommentsPostId, showToast, deletePost, user, addReaction } = useApp();
     const { t } = useLanguage();
     const [isLiked, setIsLiked] = useState(post.liked);
     const [isDisliked, setIsDisliked] = useState(post.disliked);
+    const [showReactionPicker, setShowReactionPicker] = useState(false);
     const [showOptions, setShowOptions] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [isReshared, setIsReshared] = useState(false);
@@ -227,6 +230,25 @@ export default function PostCard({ post }: PostCardProps) {
                 )}
             </div>
 
+            {/* Reactions Display */}
+            {post.reactions && Object.keys(post.reactions).length > 0 && (
+                <div className="px-4 py-2 flex gap-2 flex-wrap">
+                    {Object.entries(post.reactions).map(([emoji, count]) => (
+                        <button
+                            key={emoji}
+                            onClick={() => addReaction(post.id, emoji)}
+                            className={`px-2 py-1 rounded-full text-xs font-bold border flex items-center gap-1 transition-all ${post.userReaction === emoji
+                                ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
+                                : 'bg-[var(--bg-secondary)] border-[var(--border)] hover:bg-[var(--border)]'
+                                }`}
+                        >
+                            <span>{emoji}</span>
+                            <span>{count}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {/* Stats Quick View */}
             <div className="px-4 py-2 border-t border-[var(--border)] flex items-center gap-4 text-[11px] font-bold text-[var(--text-muted)]">
                 <span>{post.stats.views.toLocaleString()} {t('post.views')}</span>
@@ -251,6 +273,23 @@ export default function PostCard({ post }: PostCardProps) {
                         count={post.stats.dislikes + (isDisliked ? 1 : 0)}
                         onClick={handleDislike}
                     />
+                    <div className="relative">
+                        <ActionButton
+                            icon={SmilePlus}
+                            onClick={() => setShowReactionPicker(!showReactionPicker)}
+                            active={!!post.userReaction}
+                            activeColor="text-amber-500"
+                        />
+                        <ReactionPicker
+                            visible={showReactionPicker}
+                            onSelect={(emoji) => {
+                                addReaction(post.id, emoji);
+                                setShowReactionPicker(false);
+                            }}
+                            onClose={() => setShowReactionPicker(false)}
+                            position="relative"
+                        />
+                    </div>
                     <ActionButton
                         icon={MessageCircle}
                         onClick={() => setActiveCommentsPostId(post.id)}
