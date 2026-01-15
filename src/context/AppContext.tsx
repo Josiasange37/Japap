@@ -81,8 +81,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     showToast("Session invalid. Please login again.", "error");
                 }
             }).catch(err => console.error("Validation error:", err));
-        } else {
-            // Ensure we are at least anonymously signed in for DB rules
+        }
+
+        // Always ensure we have a Firebase Auth session for DB writes
+        if (!auth.currentUser) {
             signInAnonymously(auth).catch(err => console.error("Anon auth failed", err));
         }
 
