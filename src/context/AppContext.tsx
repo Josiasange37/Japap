@@ -57,6 +57,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Initial Data Fetch
     // Realtime Data Fetch
     useEffect(() => {
+        // Validation: Check if user actually exists in DB
+        if (user?.pseudo) {
+            const normalizedPseudo = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+            const userRef = ref(rtdb, `users/${normalizedPseudo}`);
+            get(userRef).then((snapshot) => {
+                if (!snapshot.exists()) {
+                    console.log("User not found in DB, logging out...");
+                    setUser(null);
+                    localStorage.removeItem('japap_user');
+                    showToast("Session invalid. Please login again.", "error");
+                }
+            }).catch(err => console.error("Validation error:", err));
+        }
+
         const postsRef = ref(rtdb, 'posts');
         const unsubscribe = onValue(postsRef, (snapshot) => {
             const data = snapshot.val();
