@@ -11,42 +11,19 @@ import { TrendingUp, RefreshCw, Zap, Star, Briefcase, Heart, GraduationCap } fro
 export default function Home() {
     const { posts } = useApp();
     const { t } = useLanguage();
-    const [activeCategory, setActiveCategory] = useState('all');
-
-    const categories = [
-        { id: 'all', label: t('categories.all'), icon: Zap },
-        { id: 'trending', label: t('categories.trending'), icon: TrendingUp },
-        { id: 'celeb', label: t('categories.celeb'), icon: Star },
-        { id: 'work', label: t('categories.work'), icon: Briefcase },
-        { id: 'relationship', label: t('categories.relationship'), icon: Heart },
-        { id: 'campus', label: t('categories.campus'), icon: GraduationCap },
-    ];
-
-    const filteredPosts = activeCategory === 'all'
-        ? posts
-        : posts.filter(p => p.category === activeCategory);
+    // const filteredPosts = activeCategory === 'all'
+    //     ? posts
+    //     : posts.filter(p => p.category === activeCategory);
 
     return (
         <Layout>
-            {/* Category Filter - Always at top */}
-            <div className="sticky top-0 z-30 bg-[var(--bg)]/80 backdrop-blur-md py-2 mt-0 md:mt-2 -mx-4 md:mx-0 px-4 md:px-0 border-b border-[var(--border)] md:border-none">
-                <div className="overflow-x-auto flex gap-3 no-scrollbar">
-                    {categories.map(cat => (
-                        <FilterTag
-                            key={cat.id}
-                            label={cat.label}
-                            active={activeCategory === cat.id}
-                            onClick={() => setActiveCategory(cat.id)}
-                        />
-                    ))}
-                </div>
-            </div>
+            {/* Category Filter Removed */}
 
             {/* Feed */}
             <section className="mt-4 md:mt-0 flex flex-col">
-                {filteredPosts.length > 0 ? (
+                {posts.length > 0 ? (
                     <>
-                        {filteredPosts.map((post, index) => (
+                        {posts.map((post, index) => (
                             <Fragment key={post.id}>
                                 <PostCard post={post} />
                                 {/* Insert an Ad after every 3 posts */}
@@ -73,12 +50,6 @@ export default function Home() {
                         </motion.div>
                         <h2 className="text-2xl font-black italic mb-2">{t('home.empty.title')}</h2>
                         <p className="text-[var(--text-muted)] font-medium max-w-sm">{t('home.empty.desc')}</p>
-                        <button
-                            onClick={() => setActiveCategory('all')}
-                            className="mt-6 text-[var(--brand)] font-bold hover:underline"
-                        >
-                            Voir tout le Japap
-                        </button>
                     </div>
                 )}
             </section>
@@ -88,13 +59,6 @@ export default function Home() {
     );
 }
 
-function FilterTag({ label, active, onClick }: { label: string, active?: boolean, onClick: () => void }) {
-    return (
-        <button
-            onClick={onClick}
-            className={`whitespace-nowrap px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider transition-all border ${active ? 'bg-black text-white border-black' : 'bg-transparent text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--text)]'}`}
-        >
-            {label}
-        </button>
-    );
-}
+
+// FilterTag removed
+
