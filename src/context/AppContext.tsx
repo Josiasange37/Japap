@@ -83,6 +83,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }).catch(err => console.error("Validation error:", err));
         }
 
+        // Request Notification Permission
+        if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+                }
+            });
+        }
+
+
         // Always ensure we have a Firebase Auth session for DB writes
         if (!auth.currentUser) {
             signInAnonymously(auth).catch(err => console.error("Anon auth failed", err));
@@ -151,7 +161,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             unsubscribe();
             notifUnsub();
         };
-    }, [user?.pseudo]); // Re-run when user changes to update "liked" status
+    }, [user?.pseudo]);
+
+    // Personal Notifications Listener (Direct mentions/likes)
+    useEffect(() => {
+        if (!user?.pseudo) return;
+        const normalizedPseudo = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const myNotifsRef = query(ref(rtdb, `notifications/${normalizedPseudo}`), limitToLast(1));
+
+        const unsub = onChildAdded(myNotifsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.timestamp > Date.now() - 10000) { // Only show recent ones (last 10s) to avoid spam on load
+                if (Notification.permission === 'granted') {
+                    const n = new Notification('Japap Social', {
+                        body: data.message,
+                        icon: '/vite.svg' // Ensure path is correct
+                    });
+                    n.onclick = () => window.focus();
+                }
+                showToast(data.message, 'info');
+                // Update internal notification state
+                setNotifications(prev => [{
+                    id: Date.now(),
+                    type: data.type || 'info',
+                    title: 'New Interaction',
+                    message: data.message,
+                    time: 'Just now',
+                    read: false
+                }, ...prev]);
+            }
+        });
+
+        return () => unsub();
+    }, [user?.pseudo]);
+
+    // Helper to send notification
+    const sendSystemNotification = async (recipientPseudo: string, type: string, message: string, postId: string) => {
+        if (!recipientPseudo || !user?.pseudo || recipientPseudo === user.pseudo) return;
+
+        const normalizedRecipient = recipientPseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const notifRef = push(ref(rtdb, `notifications/${normalizedRecipient}`));
+        await set(notifRef, {
+            type,
+            from: user.pseudo,
+            message,
+            postId,
+            timestamp: serverTimestamp(),
+            read: false
+        });
+    };
 
 
 
@@ -253,11 +311,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 } else {
                     post.stats.likes = (post.stats.likes || 0) + 1;
                     userState.liked = true;
-                    // If disliked, remove dislike
-                    if (userState.disliked) {
-                        post.stats.dislikes = (post.stats.dislikes || 1) - 1;
-                        userState.disliked = false;
-                    }
+                    // Send notification
+                    // We need to do this outside transaction ideally, but for now we can't easily.
+                    // Instead call helper after. But we need post author! 
+                    // Transaction gives us post data. We can't side-effect easily here.
+                    // We will fetch post author separately or store it in user interaction? No.
+                    // Let's optimize: We assume we have post data in client 'posts' state usually?
+                    // No, safe way: read post once, then transact? Or just run side effect if we have post data in 'posts' state.
+                    // We will use the local 'posts' state to find author for notification.
                 }
 
                 if (!post.users) post.users = {};
@@ -265,6 +326,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
             return post;
         });
+
+        // Notification Side Effect
+        const targetPost = posts.find(p => p.id === id);
+        if (targetPost && targetPost.author.username && !targetPost.liked) {
+            sendSystemNotification(targetPost.author.username, 'reaction', `${user.pseudo} liked your post`, id);
+        }
     };
 
     const dislikePost = async (id: string) => {
@@ -353,6 +420,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             });
 
             showToast("Comment posted!", "success");
+
+            // Notification Side Effect
+            const targetPost = posts.find(p => p.id === postId);
+            if (targetPost && targetPost.author.username) {
+                sendSystemNotification(targetPost.author.username, 'comment', `${user.pseudo} commented: "${text.substring(0, 20)}..."`, postId);
+            }
+
         } catch (error) {
             console.error("Error adding comment:", error);
             showToast("Failed to post comment", "error");
