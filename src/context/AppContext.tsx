@@ -467,11 +467,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             timestamp: Date.now(),
             reactions: {},
             userReactions: {},
-            replyTo: replyTo ? {
-                id: replyTo.id,
-                username: replyTo.author.username,
-                text: replyTo.text
-            } : undefined
+            ...(replyTo ? {
+                replyTo: {
+                    id: replyTo.id,
+                    username: replyTo.author.username,
+                    text: replyTo.text
+                }
+            } : {})
         };
 
         try {
