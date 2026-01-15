@@ -1,9 +1,9 @@
 {
   "rules": {
     "users": {
-      "$uid": {
+      "$pseudo": {
         ".read": "true",
-        ".write": "auth != null && auth.uid == $uid"
+        ".write": "true"
       }
     },
     "posts": {

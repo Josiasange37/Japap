@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
+import { ref, set, get, child } from 'firebase/database';
+import { rtdb } from '../firebase';
 
 export interface Toast {
     id: string;
@@ -12,6 +14,8 @@ interface AppContextType {
     user: UserProfile | null;
     posts: Post[];
     updateUser: (updates: Partial<UserProfile>) => Promise<void>;
+    checkPseudoAvailability: (pseudo: string) => Promise<boolean>;
+    registerUser: (pseudo: string, avatar: string | null) => Promise<void>;
     addPost: (post: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous?: boolean) => Promise<void>;
     likePost: (id: string) => Promise<void>;
     dislikePost: (id: string) => Promise<void>;
@@ -75,8 +79,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setToasts(prev => prev.filter(t => t.id !== id));
     };
 
+    const checkPseudoAvailability = async (pseudo: string): Promise<boolean> => {
+        if (!pseudo) return false;
+        const normalizedPseudo = pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const dbRef = ref(rtdb);
+        try {
+            const snapshot = await get(child(dbRef, `users/${normalizedPseudo}`));
+            return !snapshot.exists();
+        } catch (error) {
+            console.error("Error checking pseudo:", error);
+            return false;
+        }
+    };
+
+    const registerUser = async (pseudo: string, avatar: string | null) => {
+        const normalizedPseudo = pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const newUser: UserProfile = {
+            pseudo: pseudo, // Keep original casing for display
+            avatar,
+            onboarded: true,
+            bio: "Spilling tea since forever"
+        };
+
+        try {
+            await set(ref(rtdb, 'users/' + normalizedPseudo), newUser);
+            setUser(newUser);
+            localStorage.setItem('japap_user', JSON.stringify(newUser));
+            showToast("Welcome to Japap!", "success");
+        } catch (error) {
+            console.error("Error registering user:", error);
+            showToast("Failed to register. Please try again.", "error");
+            throw error;
+        }
+    };
+
     const updateUser = async (updates: Partial<UserProfile>) => {
         const newUser = user ? { ...user, ...updates } : updates as UserProfile;
+
+        // If we have a pseudo (which acts as ID basically), update remote
+        if (newUser.pseudo) {
+            const normalizedPseudo = newUser.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+            try {
+                // We typically just update the entry
+                await set(ref(rtdb, 'users/' + normalizedPseudo), newUser);
+            } catch (e) {
+                console.error("Failed to sync user update to DB", e);
+            }
+        }
+
         setUser(newUser);
         localStorage.setItem('japap_user', JSON.stringify(newUser));
     };
@@ -172,6 +222,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             user,
             posts,
             updateUser,
+            checkPseudoAvailability,
+            registerUser,
             addPost,
             likePost,
             dislikePost,

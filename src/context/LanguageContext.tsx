@@ -101,6 +101,7 @@ const translations = {
         'onboarding.profile.subtitle': 'Alias',
         'onboarding.profile.label': 'VOTRE PSEUDONYME',
         'onboarding.profile.button': 'TERMINER LA CONFIG',
+        'onboarding.error.pseudoTaken': 'Ce pseudo est déjà pris, wanda !',
     },
     en: {
         // Nav
@@ -194,6 +195,7 @@ const translations = {
         'onboarding.profile.subtitle': 'Alias',
         'onboarding.profile.label': 'SCOOP PSEUDONYM',
         'onboarding.profile.button': 'COMPLETE SETUP',
+        'onboarding.error.pseudoTaken': 'This pseudo is already taken!',
     }
 };
 

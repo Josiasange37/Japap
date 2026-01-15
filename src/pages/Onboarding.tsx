@@ -11,22 +11,26 @@ export default function Onboarding() {
     const [pseudo, setPseudo] = useState('');
     const [avatar, setAvatar] = useState<string | null>(null);
 
-    const { updateUser } = useApp();
+    const { registerUser, checkPseudoAvailability, showToast } = useApp();
     const { language, setLanguage, t } = useLanguage();
     const [isLoading, setIsLoading] = useState(false);
 
     const handleFinish = async () => {
         setIsLoading(true);
         try {
-            await updateUser({
-                pseudo,
-                avatar,
-                onboarded: true,
-                bio: "Spilling tea since forever"
-            });
+            const isAvailable = await checkPseudoAvailability(pseudo);
+
+            if (!isAvailable) {
+                showToast(t('onboarding.error.pseudoTaken') || "Pseudo already taken", 'error');
+                setIsLoading(false);
+                return;
+            }
+
+            await registerUser(pseudo, avatar);
             navigate('/', { replace: true });
         } catch (error) {
             console.error("Failed to finish onboarding:", error);
+            // Error is already toasted in registerUser
         } finally {
             setIsLoading(false);
         }
