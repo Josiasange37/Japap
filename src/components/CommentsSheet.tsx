@@ -43,6 +43,7 @@ export default function CommentsSheet() {
                 // Let's keep existing order behavior: Array.
                 // If data is object, Object.values order is not guaranteed. Sort it.
                 loadedComments.sort((a, b) => a.timestamp - b.timestamp);
+                console.log("CommentsSheet: loadedComments:", loadedComments);
                 setComments(loadedComments);
             } else {
                 setComments([]);
@@ -108,6 +109,11 @@ export default function CommentsSheet() {
                         </div>
 
                         {/* Comments List */}
+                        {/* DEBUG INFO */}
+                        <div className="bg-red-100 text-red-900 p-2 text-xs font-mono break-all">
+                            DEBUG: ID={postId}, Len={comments.length},
+                            Data={JSON.stringify(comments)}
+                        </div>
                         <div className="flex-1 overflow-y-auto pt-4 pb-12 flex flex-col gap-1">
                             {comments.length === 0 ? (
                                 <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-2 px-6 text-center">
