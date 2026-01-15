@@ -65,11 +65,14 @@ export default function CommentsSheet() {
         e.preventDefault();
         if (!text.trim() || !postId) return;
 
+        if (!text.trim() || !postId) return;
+
         if (replyingTo) {
-            // Logic for reply integration if needed later
+            addComment(postId, text.trim(), replyingTo);
+        } else {
+            addComment(postId, text.trim());
         }
 
-        addComment(postId, text.trim());
         setText('');
         setReplyingTo(null);
     };
@@ -114,7 +117,7 @@ export default function CommentsSheet() {
                         </div>
 
                         {/* Comments List */}
-                        <div ref={containerRef} className="flex-1 overflow-y-auto pt-4 pb-12 flex flex-col gap-1">
+                        <div ref={containerRef} className="flex-1 overflow-y-auto pt-4 pb-12 flex flex-col gap-1 [&::-webkit-scrollbar]:hidden scrollbar-none">
                             {comments.length === 0 ? (
                                 <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 gap-2 px-6 text-center">
                                     <p className="text-sm font-medium">{isLoadingComments ? "Loading comments..." : t('comment.empty')}</p>
@@ -142,24 +145,24 @@ export default function CommentsSheet() {
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-4 bg-[#09090b] border-t border-white/5 pb-10 flex flex-col gap-2 shrink-0">
+                        <div className="p-4 bg-[#09090b] border-t border-white/5 pb-10 flex flex-col gap-2 shrink-0 z-50 sticky bottom-0">
                             <AnimatePresence>
                                 {replyingTo && (
                                     <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, y: 10 }}
-                                        className="bg-zinc-900 rounded-xl p-3 flex items-center justify-between border border-white/10"
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="bg-[#1f2c34] rounded-lg p-2.5 flex items-center justify-between border-l-4 border-[#00a884] shadow-lg mb-1"
                                     >
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-[10px] font-bold text-white">Replying to @{replyingTo.author.username}</span>
-                                            <p className="text-xs text-zinc-400 line-clamp-1 italic">"{replyingTo.text}"</p>
+                                        <div className="flex flex-col gap-0.5 min-w-0">
+                                            <span className="text-[11px] font-bold text-[#00a884]">Replying to @{replyingTo.author.username}</span>
+                                            <p className="text-xs text-zinc-300 line-clamp-1 italic truncate">"{replyingTo.text}"</p>
                                         </div>
                                         <button
                                             onClick={() => setReplyingTo(null)}
-                                            className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2"
                                         >
-                                            <X size={14} className="text-zinc-400" />
+                                            <X size={16} className="text-zinc-400" />
                                         </button>
                                     </motion.div>
                                 )}

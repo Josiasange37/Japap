@@ -22,7 +22,7 @@ interface AppContextType {
     dislikePost: (id: string) => Promise<void>;
     addReaction: (postId: string, emoji: string) => Promise<void>;
     addCommentReaction: (postId: string, commentId: string, emoji: string) => Promise<void>;
-    addComment: (postId: string, text: string) => Promise<void>;
+    addComment: (postId: string, text: string, replyTo?: GossipComment) => Promise<void>;
     toasts: Toast[];
     showToast: (message: string, type?: Toast['type']) => void;
     removeToast: (id: string) => void;
@@ -441,7 +441,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     /**
      * Helper to add a comment
      */
-    const addComment = async (postId: string, text: string) => {
+    const addComment = async (postId: string, text: string, replyTo?: GossipComment) => {
         if (!user) return;
 
         console.log("AppContext: addComment called for postId:", postId);
@@ -453,7 +453,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             author: { id: user.pseudo, username: user.pseudo, avatar: user.avatar },
             timestamp: Date.now(),
             reactions: {},
-            userReactions: {}
+            userReactions: {},
+            replyTo: replyTo ? {
+                id: replyTo.id,
+                username: replyTo.author.username,
+                text: replyTo.text
+            } : undefined
         };
 
         try {

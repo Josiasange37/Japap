@@ -22,7 +22,7 @@ import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Link, useLocation } from 'react-router-dom';
 import PWAInstallBanner from './PWAInstallBanner';
-import AdUnit from './AdUnit';
+
 
 import { useScrollPosition } from '../hooks/useScrollPosition';
 
@@ -78,9 +78,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         </Link>
                     ))}
 
-                    <div className="mt-8">
-                        <AdUnit slot="1234567890" format="rectangle" className="opacity-80 hover:opacity-100 transition-opacity" />
-                    </div>
+
                 </nav>
 
                 <div className="mt-auto pt-8 border-t border-[var(--border)] space-y-6">
@@ -267,9 +265,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                                     </div>
                                 </div>
 
-                                <div className="mt-4">
-                                    <AdUnit slot="9876543210" format="rectangle" className="opacity-90" />
-                                </div>
+
 
                                 <div className="pt-8 border-t border-[var(--border)]">
                                     <div className="flex flex-col gap-4">

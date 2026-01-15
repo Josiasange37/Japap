@@ -2,7 +2,6 @@ import React, { Fragment } from 'react';
 import Layout from '../components/Layout';
 import PostCard from '../components/PostCard';
 import CommentsSheet from '../components/CommentsSheet';
-import AdUnit from '../components/AdUnit';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motion } from 'framer-motion';
@@ -34,15 +33,9 @@ export default function Home() {
                     </div>
                 ) : posts.length > 0 ? (
                     <>
-                        {posts.map((post, index) => (
+                        {posts.map((post) => (
                             <Fragment key={post.id}>
                                 <PostCard post={post} />
-                                {/* Insert an Ad after every 3 posts */}
-                                {(index + 1) % 3 === 0 && (
-                                    <div className="px-4 md:px-0 mb-6">
-                                        <AdUnit slot="7890123456" />
-                                    </div>
-                                )}
                             </Fragment>
                         ))}
                         <div className="py-10 flex flex-col items-center justify-center text-[var(--text-muted)] opacity-50">
