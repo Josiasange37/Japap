@@ -99,6 +99,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             signInAnonymously(auth).catch(err => console.error("Anon auth failed", err));
         }
 
+        // Optimistic Load from Cache
+        const cachedPosts = localStorage.getItem('japap_posts_cache');
+        if (cachedPosts) {
+            try {
+                const parsed = JSON.parse(cachedPosts);
+                setPosts(parsed);
+                setIsLoading(false); // Immediate visual load
+            } catch (e) {
+                console.error("Cache parse error", e);
+            }
+        }
+
         const postsQuery = query(ref(rtdb, 'posts'), limitToLast(20));
         const unsubscribe = onValue(postsQuery, (snapshot) => {
             const data = snapshot.val();
@@ -120,6 +132,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     userReaction: user?.pseudo ? data[key].users?.[user.pseudo]?.reaction : null
                 })).sort((a, b) => b.timestamp - a.timestamp);
                 setPosts(loadedPosts);
+                localStorage.setItem('japap_posts_cache', JSON.stringify(loadedPosts));
             } else {
                 setPosts([]);
             }
