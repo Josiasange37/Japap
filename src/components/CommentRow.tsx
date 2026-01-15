@@ -1,9 +1,9 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
-import type { PanInfo } from 'framer-motion';
 import { Reply as ReplyIcon } from 'lucide-react';
 import type { GossipComment } from '../types';
 import ReactionPicker from './ReactionPicker';
+import { getUserColor } from '../utils/colors';
 
 interface CommentRowProps {
     comment: GossipComment;
@@ -115,8 +115,14 @@ export default function CommentRow({
                         </div>
                     </div>
                     {comment.replyTo && (
-                        <div className="bg-[#1f2c34] border-l-4 border-[#00a884] rounded-md px-3 py-2 mb-2 max-w-full shadow-sm bg-opacity-40">
-                            <p className="text-[10px] font-bold text-[#00a884] uppercase tracking-wide mb-0.5">
+                        <div
+                            className="bg-[#1f2c34] border-l-4 rounded-md px-3 py-2 mb-2 max-w-full shadow-sm bg-opacity-40"
+                            style={{ borderColor: getUserColor(comment.replyTo.username) }}
+                        >
+                            <p
+                                className="text-[10px] font-bold uppercase tracking-wide mb-0.5"
+                                style={{ color: getUserColor(comment.replyTo.username) }}
+                            >
                                 {comment.replyTo.username.startsWith('@') ? comment.replyTo.username : `@${comment.replyTo.username}`}
                             </p>
                             <p className="text-xs text-zinc-300 line-clamp-1">{comment.replyTo.text}</p>

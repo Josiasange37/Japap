@@ -8,6 +8,7 @@ import CommentRow from './CommentRow';
 import { ref, onValue, query, orderByChild } from 'firebase/database';
 import { rtdb } from '../firebase';
 import type { GossipComment } from '../types';
+import { getUserColor } from '../utils/colors';
 
 
 export default function CommentsSheet() {
@@ -152,10 +153,16 @@ export default function CommentsSheet() {
                                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="bg-[#1f2c34] rounded-lg p-2.5 flex items-center justify-between border-l-4 border-[#00a884] shadow-lg mb-1"
+                                        className="bg-[#1f2c34] rounded-lg p-2.5 flex items-center justify-between border-l-4 shadow-lg mb-1"
+                                        style={{ borderColor: getUserColor(replyingTo.author.username) }}
                                     >
                                         <div className="flex flex-col gap-0.5 min-w-0">
-                                            <span className="text-[11px] font-bold text-[#00a884]">Replying to @{replyingTo.author.username}</span>
+                                            <span
+                                                className="text-[11px] font-bold"
+                                                style={{ color: getUserColor(replyingTo.author.username) }}
+                                            >
+                                                Replying to @{replyingTo.author.username}
+                                            </span>
                                             <p className="text-xs text-zinc-300 line-clamp-1 italic truncate">"{replyingTo.text}"</p>
                                         </div>
                                         <button
