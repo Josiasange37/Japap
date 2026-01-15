@@ -4,11 +4,14 @@ import PostCard from '../components/PostCard';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Search } from 'lucide-react';
+import { useScrollPosition } from '../hooks/useScrollPosition';
 
 export default function Trending() {
     const { posts, clearTrendingCount } = useApp();
     const { t } = useLanguage();
     const [searchQuery, setSearchQuery] = useState('');
+    const scrollY = useScrollPosition();
+    const isAtTop = scrollY < 10;
 
     // Clear badge on mount
     useEffect(() => {
@@ -31,7 +34,17 @@ export default function Trending() {
     return (
         <Layout>
             <div className="px-4 md:px-0">
-                {/* Search Bar – sticky with original shape */}
+                {/* Second Header – only visible at top */}
+                {isAtTop && (
+                    <div className="sticky top-0 z-30 bg-[var(--bg)]/95 backdrop-blur-md pt-4 pb-2 border-b border-[var(--border)]">
+                        <h1 className="font-display text-4xl font-black tracking-tight">{t('trending.title')}</h1>
+                        <p className="text-[var(--text-muted)] font-bold text-xs uppercase tracking-[0.2em] mt-1">
+                            {t('trending.subtitle')}
+                        </p>
+                    </div>
+                )}
+
+                {/* Search Bar – transparent rounded shape, sticky */}
                 <div className="sticky top-0 z-30 py-2 bg-transparent backdrop-blur-none">
                     <div className="relative mb-4 group">
                         <Search
@@ -43,7 +56,7 @@ export default function Trending() {
                             placeholder={t('trending.search')}
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full bg-[var(--card)] border border-[var(--border)] pl-16 pr-6 py-5 rounded-[32px] font-bold outline-none focus:ring-4 focus:ring-[var(--brand)]/10 focus:border-[var(--brand)] transition-all"
+                            className="w-full bg-transparent border border-[var(--border)] pl-16 pr-6 py-5 rounded-[32px] font-bold outline-none focus:ring-4 focus:ring-[var(--brand)]/10 focus:border-[var(--brand)] transition-all"
                         />
                     </div>
                 </div>
