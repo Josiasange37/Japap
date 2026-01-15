@@ -24,7 +24,7 @@ import { Link, useLocation } from 'react-router-dom';
 import PWAInstallBanner from './PWAInstallBanner';
 import AdUnit from './AdUnit';
 
-import { useScrollDirection } from '../hooks/useScrollDirection';
+import { useScrollPosition } from '../hooks/useScrollPosition';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const { theme, toggleTheme } = useTheme();
@@ -32,7 +32,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const { language, setLanguage, t } = useLanguage();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const location = useLocation();
-    const scrollDirection = useScrollDirection();
+    const scrollY = useScrollPosition();
+    const isAtTop = scrollY < 10;
 
     const unreadCount = notifications.length;
 
@@ -139,7 +140,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {/* Main Content Area */}
             <main className="flex-1 flex flex-col min-w-0">
                 {/* Mobile Header - Auto-hide on scroll */}
-                <header className={`lg:hidden h-16 border-b border-[var(--border)] bg-[var(--glass)] backdrop-blur-xl sticky top-0 z-40 px-4 flex items-center justify-between transition-transform duration-300 ${scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'}`}>
+                <header className={`lg:hidden h-16 border-b border-[var(--border)] bg-[var(--glass)] backdrop-blur-xl sticky top-0 z-40 px-4 flex items-center justify-between transition-transform duration-300 ${isAtTop ? 'translate-y-0' : '-translate-y-full'}`}>
                     <div className="flex items-center gap-2">
                         <div className="w-8 h-8 bg-[var(--brand)] rounded-lg flex items-center justify-center">
                             <Zap className="text-white fill-white" size={18} />
