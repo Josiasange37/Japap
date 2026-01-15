@@ -9,8 +9,9 @@ import { motion } from 'framer-motion';
 import { TrendingUp, RefreshCw, Zap, Star, Briefcase, Heart, GraduationCap } from 'lucide-react';
 
 export default function Home() {
-    const { posts } = useApp();
+    const { posts, isLoading } = useApp();
     const { t } = useLanguage();
+
     // const filteredPosts = activeCategory === 'all'
     //     ? posts
     //     : posts.filter(p => p.category === activeCategory);
@@ -21,7 +22,18 @@ export default function Home() {
 
             {/* Feed */}
             <section className="mt-4 md:mt-0 flex flex-col">
-                {posts.length > 0 ? (
+                {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-20 px-10 text-center">
+                        <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                            className="w-12 h-12 border-4 border-[var(--bg-secondary)] border-t-[var(--brand)] rounded-full mb-6"
+                        />
+                        <p className="text-[var(--text-muted)] font-black text-xs uppercase tracking-widest animate-pulse">
+                            Patienter pour le nouveux japap du moment...
+                        </p>
+                    </div>
+                ) : posts.length > 0 ? (
                     <>
                         {posts.map((post, index) => (
                             <Fragment key={post.id}>

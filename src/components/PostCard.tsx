@@ -46,6 +46,12 @@ export default function PostCard({ post }: PostCardProps) {
         post.content.toLowerCase().includes('scandal') ||
         post.content.length > 500;
 
+    // Sync local state with real data when it changes
+    React.useEffect(() => {
+        setIsLiked(post.liked);
+        setIsDisliked(post.disliked);
+    }, [post.liked, post.disliked]);
+
     const handleDoubleTap = () => {
         if (!isLiked) {
             handleLike();
@@ -55,14 +61,18 @@ export default function PostCard({ post }: PostCardProps) {
     };
 
     const handleLike = () => {
-        setIsLiked(!isLiked);
-        if (isDisliked) setIsDisliked(false);
+        // Optimistic update
+        const newIsLiked = !isLiked;
+        setIsLiked(newIsLiked);
+        if (isDisliked && newIsLiked) setIsDisliked(false);
         likePost(post.id);
     };
 
     const handleDislike = () => {
-        setIsDisliked(!isDisliked);
-        if (isLiked) setIsLiked(false);
+        // Optimistic update
+        const newIsDisliked = !isDisliked;
+        setIsDisliked(newIsDisliked);
+        if (isLiked && newIsDisliked) setIsLiked(false);
         dislikePost(post.id);
     };
 
@@ -263,14 +273,14 @@ export default function PostCard({ post }: PostCardProps) {
                         icon={Heart}
                         active={isLiked}
                         activeColor="text-pink-500"
-                        count={post.stats.likes + (isLiked ? 1 : 0)}
+                        count={Math.max(0, post.stats.likes + (isLiked ? 1 : 0) - (post.liked ? 1 : 0))}
                         onClick={handleLike}
                     />
                     <ActionButton
                         icon={ThumbsDown}
                         active={isDisliked}
                         activeColor="text-blue-500"
-                        count={post.stats.dislikes + (isDisliked ? 1 : 0)}
+                        count={Math.max(0, post.stats.dislikes + (isDisliked ? 1 : 0) - (post.disliked ? 1 : 0))}
                         onClick={handleDislike}
                     />
                     <div className="relative">

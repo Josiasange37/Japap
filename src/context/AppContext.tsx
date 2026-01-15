@@ -291,18 +291,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const addComment = async (postId: string, text: string) => {
         if (!user) return;
-        const newComment = await JapapAPI.addComment(postId, text, user);
 
-        setPosts(prev => prev.map(p => {
-            if (p.id === postId) {
-                return {
-                    ...p,
-                    stats: { ...p.stats, comments: p.stats.comments + 1 },
-                    commentsList: [...(p.commentsList || []), newComment]
-                };
-            }
-            return p;
-        }));
+        const newCommentRef = push(ref(rtdb, `comments/${postId}`));
+        const newComment: GossipComment = {
+            id: newCommentRef.key as string,
+            text,
+            author: { id: user.pseudo, username: user.pseudo, avatar: user.avatar },
+            timestamp: Date.now()
+        };
+
+        try {
+            await set(newCommentRef, newComment);
+
+            // Update post comment count
+            const postStatsRef = ref(rtdb, `posts/${postId}/stats/comments`);
+            await runTransaction(postStatsRef, (currentComments) => {
+                return (currentComments || 0) + 1;
+            });
+
+            showToast("Comment posted!", "success");
+        } catch (error) {
+            console.error("Error adding comment:", error);
+            showToast("Failed to post comment", "error");
+        }
     };
 
     const deletePost = async (id: string) => {
