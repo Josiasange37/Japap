@@ -63,20 +63,29 @@ export default function CommentsSheet() {
         return () => unsubscribe();
     }, [postId]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!text.trim() || !postId) return;
 
-        if (!text.trim() || !postId) return;
+        console.log("Submitting comment:", { text, postId, replyingTo });
 
-        if (replyingTo) {
-            addComment(postId, text.trim(), replyingTo);
-        } else {
-            addComment(postId, text.trim());
+        if (!text.trim()) return;
+        if (!postId) {
+            console.error("No postId found in CommentsSheet");
+            return;
         }
 
-        setText('');
-        setReplyingTo(null);
+        try {
+            if (replyingTo) {
+                await addComment(postId, text.trim(), replyingTo);
+            } else {
+                await addComment(postId, text.trim(), undefined);
+            }
+            console.log("Comment submitted successfully");
+            setText('');
+            setReplyingTo(null);
+        } catch (error) {
+            console.error("Failed to submit comment:", error);
+        }
     };
 
     // Auto-focus input when opening or replying
