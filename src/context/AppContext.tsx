@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
-import { ref, set, get, child, onValue, push, update, runTransaction, serverTimestamp } from 'firebase/database';
-import { rtdb } from '../firebase';
+import { ref, set, get, child, onValue, push, update, runTransaction, serverTimestamp, query, limitToLast, onChildAdded } from 'firebase/database';
+import { signInAnonymously } from 'firebase/auth';
+import { rtdb, auth } from '../firebase';
 
 export interface Toast {
     id: string;
@@ -54,6 +55,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         { id: 4, type: 'comment', title: 'New Comment', message: 'Someone commented on your post', time: '3h', read: false }
     ]);
 
+    const removeToast = (id: string) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    };
+
+    const showToast = (message: string, type: Toast['type'] = 'success') => {
+        const id = Date.now().toString();
+        const newToast: Toast = { id, message, type };
+        setToasts(prev => [...prev, newToast]);
+        setTimeout(() => removeToast(id), 3000);
+    };
+
     // Initial Data Fetch
     // Realtime Data Fetch
     useEffect(() => {
@@ -69,10 +81,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     showToast("Session invalid. Please login again.", "error");
                 }
             }).catch(err => console.error("Validation error:", err));
+        } else {
+            // Ensure we are at least anonymously signed in for DB rules
+            signInAnonymously(auth).catch(err => console.error("Anon auth failed", err));
         }
 
-        const postsRef = ref(rtdb, 'posts');
-        const unsubscribe = onValue(postsRef, (snapshot) => {
+        const postsQuery = query(ref(rtdb, 'posts'), limitToLast(20));
+        const unsubscribe = onValue(postsQuery, (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 const loadedPosts = Object.keys(data).map(key => ({
@@ -98,19 +113,45 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setIsLoading(false);
         });
 
-        return () => unsubscribe();
+
+
+        // Notifications Listener (New Posts)
+        // We use child_added on the same query to detect ONLY new items effectively if we were tracking strict timestamps,
+        // but for simplicity in this session, let's just listen to the last 1.
+        // Better approach: listen to 'posts' limitToLast(1) separately and check if it's new.
+        const notificationsRef = query(ref(rtdb, 'posts'), limitToLast(1));
+        let initialLoad = true;
+
+        const notifUnsub = onChildAdded(notificationsRef, (snapshot) => {
+            if (initialLoad) return; // Skip the first one if it exists
+            const post = snapshot.val();
+            if (post && (!user?.pseudo || post.author.username !== user.pseudo)) {
+                // It's a new post from someone else
+                setNotifications(prev => [
+                    {
+                        id: Date.now(),
+                        type: 'new_post',
+                        title: 'New Gossip!',
+                        message: `${post.author.username} just posted a scoop!`,
+                        time: 'Just now',
+                        read: false
+                    },
+                    ...prev
+                ]);
+                showToast(`New gossip from ${post.author.username}`, 'info');
+            }
+        });
+
+        // Timeout to disable initialLoad flag prevents spam on refresh
+        setTimeout(() => { initialLoad = false; }, 2000);
+
+        return () => {
+            unsubscribe();
+            notifUnsub();
+        };
     }, [user?.pseudo]); // Re-run when user changes to update "liked" status
 
-    const showToast = (message: string, type: Toast['type'] = 'success') => {
-        const id = Date.now().toString();
-        const newToast: Toast = { id, message, type };
-        setToasts(prev => [...prev, newToast]);
-        setTimeout(() => removeToast(id), 3000);
-    };
 
-    const removeToast = (id: string) => {
-        setToasts(prev => prev.filter(t => t.id !== id));
-    };
 
     const checkPseudoAvailability = async (pseudo: string): Promise<boolean> => {
         if (!pseudo) return false;

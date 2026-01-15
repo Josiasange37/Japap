@@ -4,11 +4,13 @@ import { X, Send, Reply as ReplyIcon, Smile } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import ReactionPicker from './ReactionPicker';
+import { ref, onValue, query, orderByChild } from 'firebase/database';
+import { rtdb } from '../firebase';
 import type { GossipComment } from '../types';
 
 
 export default function CommentsSheet() {
-    const { posts, addComment, activeCommentsPostId, setActiveCommentsPostId } = useApp();
+    const { addComment, activeCommentsPostId, setActiveCommentsPostId } = useApp();
     const { t } = useLanguage();
     const postId = activeCommentsPostId;
     const onClose = () => setActiveCommentsPostId(null);
@@ -18,8 +20,37 @@ export default function CommentsSheet() {
     const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const post = posts.find((p) => p.id === postId);
-    const comments = post?.commentsList || [];
+    const [comments, setComments] = useState<GossipComment[]>([]);
+    const [isLoadingComments, setIsLoadingComments] = useState(false);
+
+    // Realtime Comments Listener
+    useEffect(() => {
+        if (!postId) {
+            setComments([]);
+            return;
+        }
+
+        setIsLoadingComments(true);
+        const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'));
+
+        const unsubscribe = onValue(commentsRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const loadedComments = Object.values(data) as GossipComment[];
+                // Sort by timestamp desc (newest first) or asc? Usually comments are Oldest -> Newest (asc). 
+                // Chat style is usually Newest at bottom.
+                // Let's keep existing order behavior: Array.
+                // If data is object, Object.values order is not guaranteed. Sort it.
+                loadedComments.sort((a, b) => a.timestamp - b.timestamp);
+                setComments(loadedComments);
+            } else {
+                setComments([]);
+            }
+            setIsLoadingComments(false);
+        });
+
+        return () => unsubscribe();
+    }, [postId]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -79,7 +110,7 @@ export default function CommentsSheet() {
                         <div className="flex-1 overflow-y-auto pt-4 pb-12 flex flex-col gap-1">
                             {comments.length === 0 ? (
                                 <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 gap-2 px-6 text-center">
-                                    <p className="text-sm font-medium">{t('comment.empty')}</p>
+                                    <p className="text-sm font-medium">{isLoadingComments ? "Loading comments..." : t('comment.empty')}</p>
                                 </div>
                             ) : (
                                 comments.map((comment: GossipComment) => (
