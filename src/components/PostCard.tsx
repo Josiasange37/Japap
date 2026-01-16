@@ -223,7 +223,7 @@ export default function PostCard({ post }: PostCardProps) {
                     </div>
                 )}
 
-                {(post.type === 'video' ) && (
+                {(post.type === 'video') && (
                     <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
                         <video src={post.content} preload={"metadata"} controls={true} ></video>
                     </div>
@@ -313,30 +313,30 @@ export default function PostCard({ post }: PostCardProps) {
                         <AnimatePresence>
                             {showShareModal && (
                                 <motion.div
-                                    initial={{ opacity: 0, scale: 0.9, y: 10, x: -100 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0, x: -150 }}
-                                    exit={{ opacity: 0, scale: 0.9, y: 10, x: -100 }}
-                                    className="absolute bottom-12 right-0 w-56 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl z-50 overflow-hidden p-2"
+                                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                                    className="absolute bottom-14 right-0 w-64 bg-[var(--card)] border border-[var(--border)] rounded-2xl shadow-2xl z-50 overflow-hidden p-2"
                                 >
                                     <div className="p-2 border-b border-[var(--border)] mb-1">
                                         <p className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest text-center">Partager le kongosa</p>
                                     </div>
                                     <button
                                         onClick={() => handleShare('native')}
-                                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-[var(--bg-secondary)] rounded-xl transition-colors"
+                                        className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-bold hover:bg-[var(--bg-secondary)] rounded-xl transition-colors active:scale-[0.98]"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <ExternalLink size={18} />
+                                            <ExternalLink size={20} />
                                             <span>Via l'App</span>
                                         </div>
                                         <ChevronRight size={14} className="opacity-30" />
                                     </button>
                                     <button
                                         onClick={() => handleShare('copy')}
-                                        className="w-full flex items-center justify-between px-4 py-3 text-sm font-bold hover:bg-[var(--bg-secondary)] rounded-xl transition-colors"
+                                        className="w-full flex items-center justify-between px-4 py-3.5 text-sm font-bold hover:bg-[var(--bg-secondary)] rounded-xl transition-colors active:scale-[0.98]"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <Copy size={18} />
+                                            <Copy size={20} />
                                             <span>Copier le lien</span>
                                         </div>
                                         <ChevronRight size={14} className="opacity-30" />

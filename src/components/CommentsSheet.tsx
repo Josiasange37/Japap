@@ -28,21 +28,16 @@ export default function CommentsSheet() {
 
     // Realtime Comments Listener
     useEffect(() => {
-        if (!postId) {
-            return;
-        }
+        if (!postId) return;
 
-        setIsLoadingComments(true);
         setIsLoadingComments(true);
         const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'), limitToLast(50));
 
         const unsubscribe = onValue(commentsRef, (snapshot) => {
             const data = snapshot.val();
-            console.log("CommentsSheet: Fetching for postId:", postId, "Data exists:", !!data, "Data:", data);
             if (data) {
                 const loadedComments = Object.values(data) as GossipComment[];
 
-                // Map userReactions to userReaction for the current user
                 if (user?.pseudo) {
                     loadedComments.forEach(comment => {
                         if (comment.userReactions && comment.userReactions[user.pseudo]) {
@@ -52,7 +47,6 @@ export default function CommentsSheet() {
                 }
 
                 loadedComments.sort((a, b) => a.timestamp - b.timestamp);
-                console.log("CommentsSheet: loadedComments:", loadedComments);
                 setComments(loadedComments);
             } else {
                 setComments([]);
@@ -61,7 +55,7 @@ export default function CommentsSheet() {
         });
 
         return () => unsubscribe();
-    }, [postId]);
+    }, [postId, user?.pseudo]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

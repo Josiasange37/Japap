@@ -164,14 +164,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
                         <button
                             onClick={() => setIsSidebarOpen(true)}
-                            className="p-2.5 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors"
+                            className="p-3 hover:bg-[var(--bg-secondary)] rounded-xl transition-colors active:scale-90"
+                            aria-label="Menu"
                         >
-                            <Menu size={22} />
+                            <Menu size={24} />
                         </button>
                     </div>
                 </header>
 
-                <div className="container max-w-2xl mx-auto px-0 md:px-4 py-0 md:py-8 min-h-screen">
+                <div className="container max-w-2xl mx-auto px-0 md:px-6 py-0 md:py-8 min-h-screen">
                     {children}
                 </div>
 

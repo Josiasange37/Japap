@@ -1,154 +1,221 @@
 import type { Post, GossipComment, UserProfile } from '../types';
+import { ref, set, get, child, push, runTransaction, serverTimestamp } from 'firebase/database';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { rtdb, storage } from '../firebase';
 
 /**
  * This service acts as the bridge between the UI and the Backend.
- * To integrate a real DB, simply replace these mock calls with HTTP requests.
+ * Centralized Firebase RTDB and Storage operations.
  */
 
-// Mock Data
-const MOCK_POSTS: Post[] = [
-    {
-        id: '1',
-        type: 'text',
-        content: "Heard that the new restaurant in town uses frozen ingredients for everything... 🧊 👀",
-        author: { id: 'anon-1', username: 'Anonymous Gossip', avatar: null },
-        timestamp: Date.now() - 3600000,
-        stats: { likes: 120, dislikes: 5, comments: 45, views: 1200 },
-        liked: false,
-        disliked: false
-    },
-    {
-        id: '2',
-        type: 'image',
-        content: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1000",
-        author: { id: 'japaper-99', username: 'TheOracle', avatar: 'https://i.pravatar.cc/150?u=oracle' },
-        timestamp: Date.now() - 7200000,
-        stats: { likes: 450, dislikes: 12, comments: 89, views: 5000 },
-        liked: true,
-        disliked: false
-    },
-    {
-        id: '3',
-        type: 'text',
-        content: "The local coffee shop is changing its playlist to 100% jazz. Is this the end of my productive mornings",
-        author: { id: 'anon-3', username: 'CaffeineQueen', avatar: null },
-        timestamp: Date.now() - 86400000,
-        stats: { likes: 85, dislikes: 10, comments: 12, views: 950 },
-        liked: false,
-        disliked: false
-    },
-    {
-        id: '4',
-        type: 'image',
-        content: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&q=80&w=1000",
-        author: { id: 'dev-42', username: 'CodeSpiller', avatar: 'https://i.pravatar.cc/150?u=dev42' },
-        timestamp: Date.now() - 172800000,
-        stats: { likes: 310, dislikes: 2, comments: 56, views: 3200 },
-        liked: false,
-        disliked: false
-    },
-    {
-        id: '5',
-        type: 'text',
-        content: "Rumor has it the big CEO was spotted eating at a budget taco stand yesterday. Respect. 🌮👔",
-        author: { id: 'anon-5', username: 'StreetSpy', avatar: null },
-        timestamp: Date.now() - 259200000,
-        stats: { likes: 1200, dislikes: 40, comments: 145, views: 15000 },
-        liked: false,
-        disliked: false
-    },
-    {
-        id: '6',
-        type: 'image',
-        content: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=1000",
-        author: { id: 'music-fan', username: 'VibeCheck', avatar: 'https://i.pravatar.cc/150?u=music' },
-        timestamp: Date.now() - 432000000,
-        stats: { likes: 540, dislikes: 15, comments: 34, views: 6700 },
-        liked: false,
-        disliked: false
-    },
-    {
-        id: '7',
-        type: 'text',
-        content: "Why are all the library chairs suddenly so squeaky? I can't even move my pinky without everyone staring. 📚🤫",
-        author: { id: 'anon-7', username: 'StudyBug', avatar: null },
-        timestamp: Date.now() - 604800000,
-        stats: { likes: 45, dislikes: 5, comments: 20, views: 500 },
-        liked: false,
-        disliked: false
-    },
-    {
-        id: '8',
-        type: 'text',
-        content: "Just saw a drone delivering a single donut to the park. The future is weird but delicious. 🍩🛸",
-        author: { id: 'anon-8', username: 'TechWatcher', avatar: null },
-        timestamp: Date.now() - 518400000,
-        stats: { likes: 890, dislikes: 8, comments: 67, views: 9800 },
-        liked: false,
-        disliked: false
-    },
-    {
-        id: '9',
-        type: 'image',
-        content: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=1000",
-        author: { id: 'studio-9', username: 'MicDrop', avatar: 'https://i.pravatar.cc/150?u=studio' },
-        timestamp: Date.now() - 345600000,
-        stats: { likes: 230, dislikes: 12, comments: 45, views: 4200 },
-        liked: false,
-        disliked: false
-    },
-    {
-        id: '10',
-        type: 'text',
-        content: "The gym 'mystery smell' has finally been identified as the protein shake spill of 2025. Case closed",
-        author: { id: 'anon-10', username: 'GymRat', avatar: null },
-        timestamp: Date.now() - 172800000,
-        stats: { likes: 120, dislikes: 20, comments: 35, views: 2400 },
-        liked: false,
-        disliked: false
-    }
-];
+const normalizePseudo = (pseudo: string) => pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
 
 export const JapapAPI = {
+    // User Management
+    async checkPseudoAvailability(pseudo: string): Promise<boolean> {
+        if (!pseudo) return false;
+        const normalized = normalizePseudo(pseudo);
+        try {
+            const snapshot = await get(child(ref(rtdb), `users/${normalized}`));
+            return !snapshot.exists();
+        } catch (error) {
+            console.error("Error checking pseudo:", error);
+            return false;
+        }
+    },
+
+    async registerUser(pseudo: string, avatar: string | null): Promise<UserProfile> {
+        const normalized = normalizePseudo(pseudo);
+        const newUser: UserProfile = {
+            pseudo,
+            avatar,
+            onboarded: true,
+            bio: "Spilling tea since forever"
+        };
+        await set(ref(rtdb, `users/${normalized}`), newUser);
+        return newUser;
+    },
+
+    async updateUser(pseudo: string, updates: Partial<UserProfile>): Promise<void> {
+        const normalized = normalizePseudo(pseudo);
+        const userRef = ref(rtdb, `users/${normalized}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+            await set(userRef, { ...snapshot.val(), ...updates });
+        }
+    },
+
     // Posts
-    async getPosts(): Promise<Post[]> {
-        // Simulate network delay
-        await new Promise(r => setTimeout(r, 800));
-        return MOCK_POSTS;
+    async getPosts(limitCount: number = 20): Promise<Post[]> {
+        // This is now mainly handled by real-time listeners in AppContext, 
+        // but kept for initial/one-off fetches.
+        const postsRef = ref(rtdb, 'posts');
+        const snapshot = await get(child(ref(rtdb), 'posts')); // Simplification for now
+        const data = snapshot.val();
+        if (!data) return [];
+
+        return Object.keys(data).map(key => ({
+            id: key,
+            ...data[key],
+            stats: { likes: 0, dislikes: 0, comments: 0, views: 0, ...data[key].stats }
+        })).sort((a, b) => b.timestamp - a.timestamp);
     },
 
-    async createPost(post: Omit<Post, 'id' | 'timestamp' | 'stats'>): Promise<Post> {
-        const newPost: Post = {
+    async createPost(post: any): Promise<string> {
+        const newPostRef = push(ref(rtdb, 'posts'));
+        await set(newPostRef, {
             ...post,
-            id: Math.random().toString(36).substr(2, 9),
-            timestamp: Date.now(),
-            stats: { likes: 0, dislikes: 0, comments: 0, views: 0 }
-        };
-        return newPost;
+            timestamp: serverTimestamp(),
+            stats: { likes: 0, dislikes: 0, comments: 0, views: 0 },
+            reactions: {}
+        });
+        return newPostRef.key as string;
     },
 
-    // Engagement
-    async toggleLike(postId: string): Promise<void> {
-        console.log(`Liking post ${postId}`);
+    async deletePost(postId: string): Promise<void> {
+        await set(ref(rtdb, `posts/${postId}`), null);
     },
 
-    async toggleDislike(postId: string): Promise<void> {
-        console.log(`Disliking post ${postId}`);
+    // Interactions
+    async toggleLike(postId: string, userPseudo: string): Promise<void> {
+        const postRef = ref(rtdb, `posts/${postId}`);
+        await runTransaction(postRef, (post) => {
+            if (post) {
+                if (!post.stats) post.stats = { likes: 0, dislikes: 0, comments: 0, views: 0 };
+                const users = post.users || {};
+                const userState = users[userPseudo] || {};
+
+                if (userState.liked) {
+                    post.stats.likes = (post.stats.likes || 1) - 1;
+                    userState.liked = false;
+                } else {
+                    post.stats.likes = (post.stats.likes || 0) + 1;
+                    userState.liked = true;
+                    if (userState.disliked) {
+                        post.stats.dislikes = (post.stats.dislikes || 1) - 1;
+                        userState.disliked = false;
+                    }
+                }
+                if (!post.users) post.users = {};
+                post.users[userPseudo] = userState;
+            }
+            return post;
+        });
     },
 
-    async addComment(_postId: string, text: string, author: UserProfile): Promise<GossipComment> {
-        return {
-            id: Math.random().toString(36).substr(2, 9),
-            text,
-            author: { id: author.pseudo, username: author.pseudo, avatar: author.avatar },
-            timestamp: Date.now()
-        };
+    async toggleDislike(postId: string, userPseudo: string): Promise<void> {
+        const postRef = ref(rtdb, `posts/${postId}`);
+        await runTransaction(postRef, (post) => {
+            if (post) {
+                if (!post.stats) post.stats = { likes: 0, dislikes: 0, comments: 0, views: 0 };
+                const users = post.users || {};
+                const userState = users[userPseudo] || {};
+
+                if (userState.disliked) {
+                    post.stats.dislikes = (post.stats.dislikes || 1) - 1;
+                    userState.disliked = false;
+                } else {
+                    post.stats.dislikes = (post.stats.dislikes || 0) + 1;
+                    userState.disliked = true;
+                    if (userState.liked) {
+                        post.stats.likes = (post.stats.likes || 1) - 1;
+                        userState.liked = false;
+                    }
+                }
+                if (!post.users) post.users = {};
+                post.users[userPseudo] = userState;
+            }
+            return post;
+        });
+    },
+
+    async addReaction(postId: string, userPseudo: string, emoji: string): Promise<void> {
+        const postRef = ref(rtdb, `posts/${postId}`);
+        await runTransaction(postRef, (post) => {
+            if (post) {
+                if (!post.reactions) post.reactions = {};
+                const users = post.users || {};
+                const userState = users[userPseudo] || {};
+                const oldReaction = userState.reaction;
+
+                if (oldReaction === emoji) {
+                    post.reactions[emoji] = (post.reactions[emoji] || 1) - 1;
+                    if (post.reactions[emoji] <= 0) delete post.reactions[emoji];
+                    userState.reaction = null;
+                } else {
+                    if (oldReaction) {
+                        post.reactions[oldReaction] = (post.reactions[oldReaction] || 1) - 1;
+                        if (post.reactions[oldReaction] <= 0) delete post.reactions[oldReaction];
+                    }
+                    post.reactions[emoji] = (post.reactions[emoji] || 0) + 1;
+                    userState.reaction = emoji;
+                }
+                if (!post.users) post.users = {};
+                post.users[userPseudo] = userState;
+            }
+            return post;
+        });
+    },
+
+    // Comments
+    async addComment(postId: string, comment: any): Promise<string> {
+        const newCommentRef = push(ref(rtdb, `comments/${postId}`));
+        const commentId = newCommentRef.key as string;
+        await set(newCommentRef, { ...comment, id: commentId, timestamp: Date.now() });
+
+        // Increment count
+        const postStatsRef = ref(rtdb, `posts/${postId}/stats/comments`);
+        await runTransaction(postStatsRef, (current) => (current || 0) + 1);
+
+        return commentId;
+    },
+
+    async addCommentReaction(postId: string, commentId: string, userPseudo: string, emoji: string): Promise<void> {
+        const commentRef = ref(rtdb, `comments/${postId}/${commentId}`);
+        await runTransaction(commentRef, (comment) => {
+            if (comment) {
+                if (!comment.reactions) comment.reactions = {};
+                if (!comment.userReactions) comment.userReactions = {};
+
+                const oldReaction = comment.userReactions[userPseudo];
+
+                if (oldReaction === emoji) {
+                    comment.reactions[emoji] = (comment.reactions[emoji] || 1) - 1;
+                    if (comment.reactions[emoji] <= 0) delete comment.reactions[emoji];
+                    delete comment.userReactions[userPseudo];
+                } else {
+                    if (oldReaction) {
+                        comment.reactions[oldReaction] = (comment.reactions[oldReaction] || 1) - 1;
+                        if (comment.reactions[oldReaction] <= 0) delete comment.reactions[oldReaction];
+                    }
+                    comment.reactions[emoji] = (comment.reactions[emoji] || 0) + 1;
+                    comment.userReactions[userPseudo] = emoji;
+                }
+            }
+            return comment;
+        });
     },
 
     // Notifications
+    async sendNotification(recipientPseudo: string, notification: any): Promise<void> {
+        const normalized = normalizePseudo(recipientPseudo);
+        const notifRef = push(ref(rtdb, `notifications/${normalized}`));
+        await set(notifRef, { ...notification, timestamp: serverTimestamp(), read: false });
+    },
+
+    // Storage
+    async uploadFile(file: File, folder: string = 'media'): Promise<string> {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const sRef = storageRef(storage, `${folder}/${fileName}`);
+        const snapshot = await uploadBytes(sRef, file);
+        return await getDownloadURL(snapshot.ref);
+    },
+
     async requestNotificationPermission(): Promise<boolean> {
         if (!('Notification' in window)) return false;
         const permission = await Notification.requestPermission();
         return permission === 'granted';
     }
 };
+
