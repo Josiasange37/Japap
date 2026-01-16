@@ -100,8 +100,9 @@ export default function PostCard({ post }: PostCardProps) {
             try {
                 await navigator.clipboard.writeText(`${shareText}${shareUrl}`);
                 showToast("Lien du kongosa copié");
-            } catch (err) {
+            } catch (error) {
                 showToast("Échec de la copie. Réessaie.");
+                console.log(error);
             }
         }
         setShowShareModal(false);
@@ -223,21 +224,15 @@ export default function PostCard({ post }: PostCardProps) {
                     </div>
                 )}
 
-                {(post.type === 'video' || post.type === 'audio') && (
+                {(post.type === 'video' ) && (
                     <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <div className="relative z-10 w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-                            <Play fill="white" className="text-white ml-1" size={32} />
-                        </div>
-                        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white text-xs font-bold">
-                            <div className="flex items-center gap-2">
-                                <Volume2 size={16} />
-                                <span>PREVIEW - 0:15 / 0:45</span>
-                            </div>
-                            <span className="px-2 py-1 bg-white/20 backdrop-blur-md rounded-md">NSFW BLUR OFF</span>
-                        </div>
+                        <video src={post.content} controls={true}  />
                     </div>
+
                 )}
+                {(post.type == 'audio' ) && <div>
+                    <audio src={post.content} controls={true}  ></audio>
+                </div>}
             </div>
 
             {/* Reactions Display */}
