@@ -1,7 +1,7 @@
 import type { Post, GossipComment, UserProfile } from '../types';
-import { ref, set, get, child, push, runTransaction, serverTimestamp } from 'firebase/database';
+import { ref, set, get, child, push, runTransaction, serverTimestamp, remove } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { rtdb, storage } from '../firebase';
+import { rtdb, storage, auth } from '../firebase';
 
 /**
  * This service acts as the bridge between the UI and the Backend.
@@ -26,22 +26,62 @@ export const JapapAPI = {
 
     async registerUser(pseudo: string, avatar: string | null, bio: string): Promise<UserProfile> {
         const normalized = normalizePseudo(pseudo);
+        const uid = auth.currentUser?.uid;
+
+        if (!uid) {
+            throw new Error("Cannot register: User not authenticated");
+        }
+
         const newUser: UserProfile = {
+            uid,
             pseudo,
             avatar,
             onboarded: true,
             bio: bio || "Spilling tea since forever"
         };
-        await set(ref(rtdb, `users/${normalized}`), newUser);
-        return newUser;
+
+        try {
+            await set(ref(rtdb, `users/${normalized}`), newUser);
+            return newUser;
+        } catch (error) {
+            console.error("Error in registerUser:", error);
+            throw error;
+        }
     },
 
     async updateUser(pseudo: string, updates: Partial<UserProfile>): Promise<void> {
         const normalized = normalizePseudo(pseudo);
         const userRef = ref(rtdb, `users/${normalized}`);
-        const snapshot = await get(userRef);
-        if (snapshot.exists()) {
-            await set(userRef, { ...snapshot.val(), ...updates });
+
+        try {
+            const snapshot = await get(userRef);
+            if (!snapshot.exists()) {
+                throw new Error("User record not found");
+            }
+
+            const currentData = snapshot.val();
+
+            // Handle Pseudo Change (Movement)
+            if (updates.pseudo && normalizePseudo(updates.pseudo) !== normalized) {
+                const newNormalized = normalizePseudo(updates.pseudo);
+                const newData = { ...currentData, ...updates };
+
+                // 1. Check if new pseudo is available (extra safety)
+                const available = await this.checkPseudoAvailability(updates.pseudo);
+                if (!available) throw new Error("Pseudo already taken");
+
+                // 2. Create new record
+                await set(ref(rtdb, `users/${newNormalized}`), newData);
+
+                // 3. Delete old record
+                await remove(userRef);
+            } else {
+                // Just update current record
+                await set(userRef, { ...currentData, ...updates });
+            }
+        } catch (error) {
+            console.error("Error in updateUser:", error);
+            throw error;
         }
     },
 
@@ -73,7 +113,15 @@ export const JapapAPI = {
     },
 
     async deletePost(postId: string): Promise<void> {
-        await set(ref(rtdb, `posts/${postId}`), null);
+        try {
+            // Delete post
+            await remove(ref(rtdb, `posts/${postId}`));
+            // Delete associated comments
+            await remove(ref(rtdb, `comments/${postId}`));
+        } catch (error) {
+            console.error("Error in deletePost:", error);
+            throw error;
+        }
     },
 
     // Interactions
