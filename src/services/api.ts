@@ -1,7 +1,7 @@
 import type { Post, UserProfile } from '../types';
 import { ref, set, get, child, push, runTransaction, serverTimestamp, remove } from 'firebase/database';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { rtdb, storage, auth } from '../firebase';
+import { rtdb, storage } from '../firebase';
 
 /**
  * This service acts as the bridge between the UI and the Backend.
@@ -26,14 +26,8 @@ export const JapapAPI = {
 
     async registerUser(pseudo: string, avatar: string | null, bio: string): Promise<UserProfile> {
         const normalized = normalizePseudo(pseudo);
-        const uid = auth.currentUser?.uid;
-
-        if (!uid) {
-            throw new Error("Cannot register: User not authenticated");
-        }
 
         const newUser: UserProfile = {
-            uid,
             pseudo,
             avatar,
             onboarded: true,
@@ -42,8 +36,6 @@ export const JapapAPI = {
 
         try {
             await set(ref(rtdb, `users/${normalized}`), newUser);
-            // Also maintain UID -> Pseudo mapping for security rules
-            await set(ref(rtdb, `uidToPseudo/${uid}`), pseudo);
             return newUser;
         } catch (error) {
             console.error("Error in registerUser:", error);
@@ -75,13 +67,7 @@ export const JapapAPI = {
                 // 2. Create new record
                 await set(ref(rtdb, `users/${newNormalized}`), newData);
 
-                // 3. Update UID mapping
-                const uid = auth.currentUser?.uid;
-                if (uid) {
-                    await set(ref(rtdb, `uidToPseudo/${uid}`), updates.pseudo);
-                }
-
-                // 4. Delete old record
+                // 3. Delete old record
                 await remove(userRef);
             } else {
                 // Just update current record

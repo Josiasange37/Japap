@@ -3,13 +3,7 @@
     "users": {
       "$pseudo": {
         ".read": "true",
-        ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid) || (data.child('uid').val() === auth.uid))"
-      }
-    },
-    "uidToPseudo": {
-      "$uid": {
-        ".read": "true",
-        ".write": "auth != null && $uid === auth.uid"
+        ".write": "true"
       }
     },
     "posts": {
@@ -18,13 +12,13 @@
         "timestamp"
       ],
       "$postId": {
-        ".write": "auth != null && (!data.exists() || data.child('author/id').val() === auth.uid || data.child('author/id').val() === root.child('uidToPseudo').child(auth.uid).val())"
+        ".write": "auth != null || true"
       }
     },
     "comments": {
       "$postId": {
         ".read": "true",
-        ".write": "auth != null",
+        ".write": "true",
         ".indexOn": [
           "timestamp"
         ]
@@ -32,8 +26,8 @@
     },
     "notifications": {
       "$pseudo": {
-        ".read": "auth != null && $pseudo === root.child('uidToPseudo').child(auth.uid).val()",
-        ".write": "auth != null"
+        ".read": "true",
+        ".write": "true"
       }
     }
   }

@@ -2,8 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
 import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get } from 'firebase/database';
-import { signInAnonymously } from 'firebase/auth';
-import { rtdb, auth } from '../firebase';
+import { rtdb } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
 
 export interface Toast {
@@ -108,14 +107,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
                     const serverUser = snapshot.val();
 
-                    // Security check: ensure UID matches if present
-                    if (serverUser.uid && auth.currentUser && serverUser.uid !== auth.currentUser.uid) {
-                        console.error("UID mismatch! Potential identity hijacking attempt detected.");
-                        setUser(null);
-                        localStorage.removeItem('japap_user');
-                        return;
-                    }
-
                     // Sync any updates from server to local initially
                     if (JSON.stringify(serverUser) !== JSON.stringify(user)) {
                         console.log("Syncing user data from server...");
@@ -125,19 +116,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 } catch (err) {
                     console.error("Error verifying user:", err);
                 }
-            } else if (auth.currentUser) {
-                // We have a firebase session but no local profile? 
-                // Don't do anything yet, the RequireOnboarding will handle redirection
             }
         };
 
-        if (!auth.currentUser) {
-            signInAnonymously(auth)
-                .then(() => verifyUser())
-                .catch(err => console.error("Anon auth failed", err));
-        } else {
-            verifyUser();
-        }
+        verifyUser();
 
         const postsQuery = query(ref(rtdb, 'posts'), limitToLast(20));
         const unsubscribe = onValue(postsQuery, (snapshot) => {
@@ -268,7 +250,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!user && !isAnonymous) return;
 
         const author = isAnonymous
-            ? { id: auth.currentUser?.uid || 'anon', username: 'Anonymous Gossip', avatar: null }
+            ? { id: 'anon', username: 'Anonymous Gossip', avatar: null }
             : { id: user?.pseudo || 'anon', username: user?.pseudo || 'Anonymous', avatar: user?.avatar || null };
 
         const newPostRef = push(ref(rtdb, 'posts'));

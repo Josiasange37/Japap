@@ -57,7 +57,6 @@ export interface GossipComment {
 }
 
 export interface UserProfile {
-    uid?: string;
     pseudo: string;
     avatar: string | null;
     bio: string;
