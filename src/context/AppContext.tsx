@@ -2,8 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
 import { ref, set, get, child, onValue, push, update, runTransaction, serverTimestamp, query, limitToLast, onChildAdded } from 'firebase/database';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { signInAnonymously } from 'firebase/auth';
-import { rtdb, auth } from '../firebase';
+import { rtdb, auth, storage } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
 
 export interface Toast {
@@ -12,29 +13,9 @@ export interface Toast {
     type: 'success' | 'error' | 'info';
 }
 
-interface AppContextType {
-    user: UserProfile | null;
-    posts: Post[];
-    updateUser: (updates: Partial<UserProfile>) => Promise<void>;
-    checkPseudoAvailability: (pseudo: string) => Promise<boolean>;
-    registerUser: (pseudo: string, avatar: string | null) => Promise<void>;
-    addPost: (post: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous?: boolean) => Promise<void>;
-    likePost: (id: string) => Promise<void>;
-    dislikePost: (id: string) => Promise<void>;
-    addReaction: (postId: string, emoji: string) => Promise<void>;
-    addCommentReaction: (postId: string, commentId: string, emoji: string) => Promise<void>;
-    addComment: (postId: string, text: string, replyTo?: GossipComment) => Promise<void>;
-    toasts: Toast[];
-    showToast: (message: string, type?: Toast['type']) => void;
-    removeToast: (id: string) => void;
-    activeCommentsPostId: string | null;
-    setActiveCommentsPostId: (id: string | null) => void;
-    isLoading: boolean;
-    deletePost: (id: string) => Promise<void>;
-    notifications: any[];
-    removeNotification: (id: number) => void;
-    trendingCount: number;
-    clearTrendingCount: () => void;
+trendingCount: number;
+clearTrendingCount: () => void;
+uploadFile: (file: File, folder?: string) => Promise<string>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -318,6 +299,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const uploadFile = async (file: File, folder: string = 'media') => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const sRef = storageRef(storage, `${folder}/${fileName}`);
+
+        try {
+            const snapshot = await uploadBytes(sRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            return downloadURL;
+        } catch (error) {
+            console.error("Upload error:", error);
+            throw error;
+        }
+    };
+
     const likePost = async (id: string) => {
         if (!user?.pseudo) return;
         const postRef = ref(rtdb, `posts/${id}`);
@@ -339,14 +335,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 } else {
                     post.stats.likes = (post.stats.likes || 0) + 1;
                     userState.liked = true;
-                    // Send notification
-                    // We need to do this outside transaction ideally, but for now we can't easily.
-                    // Instead call helper after. But we need post author! 
-                    // Transaction gives us post data. We can't side-effect easily here.
-                    // We will fetch post author separately or store it in user interaction? No.
-                    // Let's optimize: We assume we have post data in client 'posts' state usually?
-                    // No, safe way: read post once, then transact? Or just run side effect if we have post data in 'posts' state.
-                    // We will use the local 'posts' state to find author for notification.
+                    // FIX: If disliked, remove dislike for mutual exclusivity
+                    if (userState.disliked) {
+                        post.stats.dislikes = (post.stats.dislikes || 1) - 1;
+                        userState.disliked = false;
+                    }
                 }
 
                 if (!post.users) post.users = {};
@@ -558,7 +551,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             notifications,
             removeNotification,
             trendingCount,
-            clearTrendingCount
+            clearTrendingCount,
+            uploadFile
         }}>
             {children}
 
