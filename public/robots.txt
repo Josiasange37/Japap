@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /guidelines
+Allow: /trending
+Disallow: /onboarding
+Disallow: /api/
+
+Sitemap: https://japap.social/sitemap.xml
