@@ -7,21 +7,26 @@ import {
     Repeat2,
     MoreHorizontal,
     ThumbsDown,
-    Play,
-    Volume2,
-    AlertCircle,
-    Flag,
-    Copy,
-    ExternalLink,
-    Trash2,
-    SmilePlus
-} from 'lucide-react';
+import {
+        Heart,
+        MessageCircle,
+        Share2,
+        Repeat2,
+        MoreHorizontal,
+        ThumbsDown,
+        Volume2,
+        AlertCircle,
+        Flag,
+        Copy,
+        ExternalLink,
+        Trash2,
+        SmilePlus
+    } from 'lucide-react';
 import type { Post } from '../types';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { parseTextWithHashtags } from '../utils/text';
 
-import AdOverlay from './AdOverlay';
 import ReactionPicker from './ReactionPicker';
 
 interface PostCardProps {
@@ -38,9 +43,6 @@ export default function PostCard({ post }: PostCardProps) {
     const [showShareModal, setShowShareModal] = useState(false);
     const [isReshared, setIsReshared] = useState(false);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
-
-    const isViral = post.stats.views > 1000 || post.stats.likes > 100;
-    const [showAd, setShowAd] = useState(true);
 
     const isRiskyContent = post.content.toLowerCase().includes('leak') ||
         post.content.toLowerCase().includes('scandal') ||
@@ -100,7 +102,7 @@ export default function PostCard({ post }: PostCardProps) {
             try {
                 await navigator.clipboard.writeText(`${shareText}${shareUrl}`);
                 showToast("Lien du kongosa copié");
-            } catch (err) {
+            } catch {
                 showToast("Échec de la copie. Réessaie.");
             }
         }
@@ -214,28 +216,57 @@ export default function PostCard({ post }: PostCardProps) {
                 )}
 
                 {post.type === 'image' && (
-                    <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] mb-2 relative">
-                        <img
-                            src={post.content}
-                            alt="Gossip Media"
-                            className="w-full h-auto max-h-[500px] object-cover"
-                        />
+                    <div className="space-y-3">
+                        <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] relative">
+                            <img
+                                src={post.content}
+                                alt="Gossip Media"
+                                className="w-full h-auto max-h-[500px] object-cover"
+                            />
+                        </div>
+                        {post.caption && (
+                            <p className="text-[15px] font-medium text-[var(--text-muted)] italic">
+                                "{post.caption}"
+                            </p>
+                        )}
                     </div>
                 )}
 
-                {(post.type === 'video' || post.type === 'audio') && (
-                    <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <div className="relative z-10 w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center cursor-pointer hover:scale-110 transition-transform">
-                            <Play fill="white" className="text-white ml-1" size={32} />
+                {post.type === 'video' && (
+                    <div className="space-y-3">
+                        <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
+                            <video
+                                src={post.content}
+                                controls
+                                className="w-full h-full object-contain"
+                                poster={post.author.avatar || undefined}
+                            />
                         </div>
-                        <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white text-xs font-bold">
-                            <div className="flex items-center gap-2">
-                                <Volume2 size={16} />
-                                <span>PREVIEW - 0:15 / 0:45</span>
+                        {post.caption && (
+                            <p className="text-[15px] font-medium text-[var(--text-muted)] italic">
+                                "{post.caption}"
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                {post.type === 'audio' && (
+                    <div className="space-y-3">
+                        <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl flex flex-col items-center gap-4 border border-[var(--border)]">
+                            <div className="w-16 h-16 bg-[var(--brand)] rounded-full flex items-center justify-center text-white">
+                                <Volume2 size={32} />
                             </div>
-                            <span className="px-2 py-1 bg-white/20 backdrop-blur-md rounded-md">NSFW BLUR OFF</span>
+                            <audio
+                                src={post.content}
+                                controls
+                                className="w-full h-10"
+                            />
                         </div>
+                        {post.caption && (
+                            <p className="text-[15px] font-medium text-[var(--text-muted)] italic text-center">
+                                "{post.caption}"
+                            </p>
+                        )}
                     </div>
                 )}
             </div>
@@ -365,7 +396,7 @@ function ActionButton({
     count,
     onClick
 }: {
-    icon: any,
+    icon: React.ElementType,
     active?: boolean,
     activeColor?: string,
     count?: number,

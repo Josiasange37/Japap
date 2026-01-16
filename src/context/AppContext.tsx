@@ -12,10 +12,30 @@ export interface Toast {
     message: string;
     type: 'success' | 'error' | 'info';
 }
-
-trendingCount: number;
-clearTrendingCount: () => void;
-uploadFile: (file: File, folder?: string) => Promise<string>;
+interface AppContextType {
+    user: UserProfile | null;
+    posts: Post[];
+    updateUser: (updates: Partial<UserProfile>) => Promise<void>;
+    checkPseudoAvailability: (pseudo: string) => Promise<boolean>;
+    registerUser: (pseudo: string, avatar: string | null) => Promise<void>;
+    addPost: (post: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous?: boolean) => Promise<void>;
+    likePost: (id: string) => Promise<void>;
+    dislikePost: (id: string) => Promise<void>;
+    addReaction: (postId: string, emoji: string) => Promise<void>;
+    addCommentReaction: (postId: string, commentId: string, emoji: string) => Promise<void>;
+    addComment: (postId: string, text: string, replyTo?: GossipComment) => Promise<void>;
+    toasts: Toast[];
+    showToast: (message: string, type?: Toast['type']) => void;
+    removeToast: (id: string) => void;
+    activeCommentsPostId: string | null;
+    setActiveCommentsPostId: (id: string | null) => void;
+    isLoading: boolean;
+    deletePost: (id: string) => Promise<void>;
+    notifications: any[];
+    removeNotification: (id: number) => void;
+    trendingCount: number;
+    clearTrendingCount: () => void;
+    uploadFile: (file: File, folder?: string) => Promise<string>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -26,10 +46,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return stored ? JSON.parse(stored) : null;
     });
 
-    const [posts, setPosts] = useState<Post[]>([]);
+    const [posts, setPosts] = useState<Post[]>(() => {
+        const cached = localStorage.getItem('japap_posts_cache');
+        try {
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(() => {
+        const cached = localStorage.getItem('japap_posts_cache');
+        return !cached; // If we have cache, we don't start as loading
+    });
     const [trendingCount, setTrendingCount] = useState(3);
     const [notifications, setNotifications] = useState<any[]>([]);
 
@@ -157,7 +187,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Personal Notifications Listener (Full List Sync)
     useEffect(() => {
         if (!user?.pseudo) {
-            setNotifications([]);
+            if (notifications.length > 0) setNotifications([]);
             return;
         }
 

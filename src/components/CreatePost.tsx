@@ -15,43 +15,79 @@ import { useNavigate } from 'react-router-dom';
 
 export default function CreatePost() {
     const [content, setContent] = useState('');
-    const [media, setMedia] = useState<string | null>(null);
+    const [mediaProgress, setMediaProgress] = useState<number | null>(null);
+    const [mediaFile, setMediaFile] = useState<File | null>(null);
+    const [mediaPreview, setMediaPreview] = useState<string | null>(null);
     const [type, setType] = useState<'text' | 'image' | 'video' | 'audio'>('text');
     const [isAnonymous, setIsAnonymous] = useState(true);
     const [isPosting, setIsPosting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { addPost, showToast } = useApp();
+    const { addPost, showToast, uploadFile } = useApp();
     const { t } = useLanguage();
     const navigate = useNavigate();
+
+    const LIMITS = {
+        image: 5 * 1024 * 1024, // 5MB
+        video: 25 * 1024 * 1024, // 25MB
+        audio: 15 * 1024 * 1024, // 15MB
+    };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            let fileType: 'image' | 'video' | 'audio' | null = null;
+            if (file.type.startsWith('image/')) fileType = 'image';
+            else if (file.type.startsWith('video/')) fileType = 'video';
+            else if (file.type.startsWith('audio/')) fileType = 'audio';
+
+            if (!fileType) {
+                showToast("Unsupported file type", "error");
+                return;
+            }
+
+            if (file.size > LIMITS[fileType]) {
+                const limitMb = LIMITS[fileType] / (1024 * 1024);
+                showToast(`File too large. Max size for ${fileType} is ${limitMb}MB`, "error");
+                return;
+            }
+
+            setMediaFile(file);
+            setType(fileType);
+
             const reader = new FileReader();
             reader.onloadend = () => {
-                setMedia(reader.result as string);
-                if (file.type.startsWith('image/')) setType('image');
-                else if (file.type.startsWith('video/')) setType('video');
-                else if (file.type.startsWith('audio/')) setType('audio');
+                setMediaPreview(reader.result as string);
             };
             reader.readAsDataURL(file);
         }
     };
 
     const handlePost = async () => {
-        if (!content && !media) return;
+        if (!content && !mediaPreview) return;
         setIsPosting(true);
         try {
+            let finalContent = content;
+            let finalCaption = undefined;
+
+            if (mediaFile) {
+                showToast("Uploading media...", "info");
+                finalContent = await uploadFile(mediaFile, type);
+                finalCaption = content;
+            }
+
             await addPost({
-                content: media || content,
-                type: media ? type : 'text',
+                content: finalContent,
+                caption: finalCaption,
+                type: mediaFile ? type : 'text',
                 timestamp: Date.now(),
                 liked: false,
                 disliked: false
             }, isAnonymous);
+
             showToast(t('create.success'));
             navigate('/');
         } catch (err) {
+            console.error(err);
             showToast("Failed to post scoop", "error");
         } finally {
             setIsPosting(false);
@@ -86,17 +122,25 @@ export default function CreatePost() {
                     className="w-full bg-transparent text-xl font-medium outline-none resize-none min-h-[150px] placeholder:text-[var(--text-muted)] opacity-80 focus:opacity-100 transition-opacity"
                 />
 
-                {media && (
+                {mediaPreview && (
                     <div className="relative mt-4 rounded-2xl overflow-hidden border border-[var(--border)] group">
-                        {type === 'image' && <img src={media} className="w-full h-auto max-h-[300px] object-cover" />}
-                        {(type === 'video' || type === 'audio') && (
-                            <div className="bg-black aspect-video flex items-center justify-center">
-                                <Video className="text-white" size={48} />
+                        {type === 'image' && <img src={mediaPreview} className="w-full h-auto max-h-[300px] object-cover" />}
+                        {type === 'video' && (
+                            <video src={mediaPreview} className="w-full max-h-[300px] object-cover" controls />
+                        )}
+                        {type === 'audio' && (
+                            <div className="bg-zinc-900 p-8 flex flex-col items-center justify-center gap-4">
+                                <Mic className="text-[var(--brand)] animate-pulse" size={48} />
+                                <p className="text-sm font-bold text-zinc-400">{mediaFile?.name}</p>
+                                <audio src={mediaPreview} controls className="w-full h-8" />
                             </div>
                         )}
                         <button
-                            onClick={() => setMedia(null)}
-                            className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black transition-colors"
+                            onClick={() => {
+                                setMediaPreview(null);
+                                setMediaFile(null);
+                            }}
+                            className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black transition-colors z-10"
                         >
                             <X size={18} />
                         </button>
@@ -113,10 +157,10 @@ export default function CreatePost() {
 
                     <button
                         onClick={handlePost}
-                        disabled={(!content && !media) || isPosting}
-                        className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-black text-lg shadow-lg transition-all ${(!content && !media) || isPosting ? 'bg-[var(--border)] text-[var(--text-muted)]' : 'bg-[var(--brand)] text-white shadow-pink-500/20 active:scale-95'}`}
+                        disabled={(!content && !mediaPreview) || isPosting}
+                        className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-black text-lg shadow-lg transition-all ${(!content && !mediaPreview) || isPosting ? 'bg-[var(--border)] text-[var(--text-muted)]' : 'bg-[var(--brand)] text-white shadow-pink-500/20 active:scale-95'}`}
                     >
-                        {isPosting ? t('create.posting') : <>{t('create.button')} <Send size={20} /></>}
+                        {isPosting ? "Posting..." : <>{t('create.button')} <Send size={20} /></>}
                     </button>
                 </div>
             </div>
