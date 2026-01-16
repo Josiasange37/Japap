@@ -7,21 +7,14 @@ import {
     Repeat2,
     MoreHorizontal,
     ThumbsDown,
-import {
-        Heart,
-        MessageCircle,
-        Share2,
-        Repeat2,
-        MoreHorizontal,
-        ThumbsDown,
-        Volume2,
-        AlertCircle,
-        Flag,
-        Copy,
-        ExternalLink,
-        Trash2,
-        SmilePlus
-    } from 'lucide-react';
+    Volume2,
+    AlertCircle,
+    Flag,
+    Copy,
+    ExternalLink,
+    Trash2,
+    SmilePlus
+} from 'lucide-react';
 import type { Post } from '../types';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
