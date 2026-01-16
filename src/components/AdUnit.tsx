@@ -10,7 +10,7 @@ interface AdUnitProps {
 
 declare global {
     interface Window {
-        adsbygoogle: any[];
+        adsbygoogle: object[];
     }
 }
 

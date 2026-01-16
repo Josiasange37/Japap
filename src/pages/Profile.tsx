@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
-    Settings,
     Edit3,
     Check,
     X,
     Grid,
     Heart,
-    MessageSquare,
     Zap,
-    Bell,
-    LogOut,
     Camera
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import Layout from '../components/Layout';
 import PostCard from '../components/PostCard';
+import AdUnit from '../components/AdUnit';
 
 export default function Profile() {
     const { user, posts, updateUser } = useApp();
@@ -140,8 +136,15 @@ export default function Profile() {
 
                 {/* Profile Feed */}
                 <div className="flex flex-col gap-6">
-                    {displayPosts.map(post => (
-                        <PostCard key={post.id} post={post} />
+                    {displayPosts.map((post, index) => (
+                        <React.Fragment key={post.id}>
+                            <PostCard post={post} />
+                            {(index + 1) % 5 === 0 && (
+                                <div className="px-4 md:px-0">
+                                    <AdUnit slot="PROFILE_FEED_SLOT" />
+                                </div>
+                            )}
+                        </React.Fragment>
                     ))}
                     {displayPosts.length === 0 && (
                         <div className="py-20 flex flex-col items-center justify-center opacity-30 text-center">
@@ -155,7 +158,7 @@ export default function Profile() {
     );
 }
 
-function TabButton({ active, icon: Icon, label, onClick }: { active: boolean, icon: any, label: string, onClick: () => void }) {
+function TabButton({ active, icon: Icon, label, onClick }: { active: boolean, icon: React.ElementType, label: string, onClick: () => void }) {
     return (
         <button
             onClick={onClick}

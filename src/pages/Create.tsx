@@ -9,6 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import CreatePost from '../components/CreatePost';
+import AdUnit from '../components/AdUnit';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function Create() {
@@ -45,12 +46,16 @@ export default function Create() {
                         </div>
                     </div>
                 </div>
+
+                <div className="mt-8">
+                    <AdUnit slot="CREATE_PAGE_SLOT" />
+                </div>
             </div>
         </Layout>
     );
 }
 
-function TipItem({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) {
+function TipItem({ icon: Icon, title, desc }: { icon: React.ElementType | string, title: string, desc: string }) {
     return (
         <div className="bg-[var(--bg-secondary)] p-4 rounded-2xl border border-[var(--border)]">
             <div className="flex items-center gap-2 mb-1">

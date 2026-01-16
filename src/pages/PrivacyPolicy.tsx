@@ -1,5 +1,6 @@
 import React from 'react';
 import Layout from '../components/Layout';
+import AdUnit from '../components/AdUnit';
 import { Shield, Lock, Eye, Cookie, FileText } from 'lucide-react';
 
 export default function PrivacyPolicy() {
@@ -65,6 +66,10 @@ export default function PrivacyPolicy() {
                             For any privacy concerns, reach out anonymously through our feedback system or at psychomarlon6@gmail.com.
                         </p>
                     </section>
+                </div>
+
+                <div className="mt-8">
+                    <AdUnit slot="POLICY_PAGE_SLOT" />
                 </div>
             </div>
         </Layout>

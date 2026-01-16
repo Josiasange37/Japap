@@ -1,5 +1,6 @@
 import React from 'react';
 import Layout from '../components/Layout';
+import AdUnit from '../components/AdUnit';
 import { BookOpen, Heart, UserX, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export default function CommunityGuidelines() {
@@ -66,12 +67,16 @@ export default function CommunityGuidelines() {
                         </ul>
                     </div>
                 </div>
+
+                <div className="mt-8">
+                    <AdUnit slot="GUIDELINES_PAGE_SLOT" />
+                </div>
             </div>
         </Layout>
     );
 }
 
-function GuidelineCard({ icon: Icon, title, desc, color }: { icon: any, title: string, desc: string, color: string }) {
+function GuidelineCard({ icon: Icon, title, desc, color }: { icon: React.ElementType, title: string, desc: string, color: string }) {
     return (
         <div className="bg-[var(--card)] p-6 rounded-[32px] border border-[var(--border)] flex gap-5 items-center">
             <div className={`p-4 rounded-2xl bg-[var(--bg-secondary)] shadow-sm ${color}`}>
