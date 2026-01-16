@@ -225,11 +225,11 @@ export default function PostCard({ post }: PostCardProps) {
 
                 {(post.type === 'video' ) && (
                     <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
-                       <video src={post.content} controls={true} />
+                        <video src={post.content} preload={"metadata"} controls={true} ></video>
                     </div>
                 )}
                 {post.type == "audio" && <div>
-                    <audio src={post.content} controls={true} />
+                    <audio src={post.content} controls={true} preload={"metadata"} ></audio>
                 </div>}
             </div>
 
