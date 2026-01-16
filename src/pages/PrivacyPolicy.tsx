@@ -62,7 +62,7 @@ export default function PrivacyPolicy() {
                             <h2 className="text-xl font-black">4. Contact Us</h2>
                         </div>
                         <p className="font-medium opacity-80">
-                            For any privacy concerns, reach out anonymously through our feedback system or at support@japap.app.
+                            For any privacy concerns, reach out anonymously through our feedback system or at pornerrr07@gmail.com.
                         </p>
                     </section>
                 </div>
