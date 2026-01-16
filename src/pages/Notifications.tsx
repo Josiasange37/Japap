@@ -1,5 +1,6 @@
 import React from 'react';
 import Layout from '../components/Layout';
+import AdUnit from '../components/AdUnit';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Zap, TrendingUp, MessageCircle, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -79,6 +80,7 @@ export default function Notifications() {
                             )
                         })}
                     </AnimatePresence>
+                    {notifications.length > 0 && <AdUnit slot="NOTIFICATIONS_SLOT" />}
                 </div>
 
                 {notifications.length === 0 && (
