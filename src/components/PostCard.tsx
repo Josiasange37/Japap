@@ -26,7 +26,7 @@ interface PostCardProps {
     post: Post;
 }
 
-export default function PostCard({ post }: PostCardProps) {
+export default React.memo(function PostCard({ post }: PostCardProps) {
     const { likePost, dislikePost, setActiveCommentsPostId, showToast, deletePost, user, addReaction } = useApp();
     const { t } = useLanguage();
     const [isLiked, setIsLiked] = useState(post.liked);
@@ -380,7 +380,7 @@ export default function PostCard({ post }: PostCardProps) {
             </div>
         </motion.article>
     );
-}
+});
 
 function ActionButton({
     icon: Icon,

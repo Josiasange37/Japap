@@ -12,9 +12,17 @@ export interface Toast {
     message: string;
     type: 'success' | 'error' | 'info';
 }
+
+export interface PaginatedFeedState {
+    posts: Post[];
+    nextCursor?: string;
+    hasMore: boolean;
+    isLoadingMore: boolean;
+}
 interface AppContextType {
     user: UserProfile | null;
     posts: Post[];
+    feedState: PaginatedFeedState;
     updateUser: (updates: Partial<UserProfile>) => Promise<void>;
     checkPseudoAvailability: (pseudo: string) => Promise<boolean>;
     registerUser: (pseudo: string, avatar: string | null) => Promise<void>;
@@ -36,6 +44,8 @@ interface AppContextType {
     trendingCount: number;
     clearTrendingCount: () => void;
     uploadFile: (file: File, folder?: string) => Promise<string>;
+    fetchMorePosts: () => Promise<void>;
+    resetFeed: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -54,6 +64,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             return [];
         }
     });
+
+    const [feedState, setFeedState] = useState<PaginatedFeedState>(() => ({
+        posts: posts,
+        nextCursor: undefined,
+        hasMore: true,
+        isLoadingMore: false
+    }));
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(() => {
@@ -137,8 +154,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     liked: user?.pseudo ? data[key].users?.[user.pseudo]?.liked : false,
                     disliked: user?.pseudo ? data[key].users?.[user.pseudo]?.disliked : false,
                     userReaction: user?.pseudo ? data[key].users?.[user.pseudo]?.reaction : null
-                })).sort((a, b) => b.timestamp - a.timestamp);
+                })).sort((a, b) => a.timestamp - b.timestamp);
                 setPosts(loadedPosts);
+                setFeedState(prev => ({
+                    ...prev,
+                    posts: loadedPosts,
+                    hasMore: loadedPosts.length >= 20
+                }));
                 localStorage.setItem('japap_posts_cache', JSON.stringify(loadedPosts));
             } else {
                 setPosts([]);
@@ -148,18 +170,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 
 
-        // Notifications Listener (New Posts)
-        // We use child_added on the same query to detect ONLY new items effectively if we were tracking strict timestamps,
-        // but for simplicity in this session, let's just listen to the last 1.
-        // Better approach: listen to 'posts' limitToLast(1) separately and check if it's new.
+        // Enhanced Real-time Updates for New Posts
+        // Listen for new posts and add them to the feed without full refresh
         const notificationsRef = query(ref(rtdb, 'posts'), limitToLast(1));
         let initialLoad = true;
+        let lastPostTimestamp: number | null = null;
 
         const notifUnsub = onChildAdded(notificationsRef, (snapshot) => {
-            if (initialLoad) return; // Skip the first one if it exists
             const post = snapshot.val();
+            const postId = snapshot.key;
+            
+            if (initialLoad) {
+                // Track the timestamp of the latest post on initial load
+                if (post && post.timestamp) {
+                    lastPostTimestamp = post.timestamp;
+                }
+                return;
+            }
+
             if (post && (!user?.pseudo || post.author.username !== user.pseudo)) {
                 // It's a new post from someone else
+                const newPost: Post = {
+                    id: postId,
+                    ...post,
+                    stats: {
+                        likes: 0,
+                        dislikes: 0,
+                        comments: 0,
+                        views: 0,
+                        ...post.stats
+                    },
+                    liked: user?.pseudo ? post.users?.[user.pseudo]?.liked : false,
+                    disliked: user?.pseudo ? post.users?.[user.pseudo]?.disliked : false,
+                    userReaction: user?.pseudo ? post.users?.[user.pseudo]?.reaction : null
+                };
+
+                // Optimistically add new post to the bottom of the feed
+                setPosts(prev => {
+                    const updatedPosts = [...prev, newPost];
+                    localStorage.setItem('japap_posts_cache', JSON.stringify(updatedPosts));
+                    return updatedPosts;
+                });
+
+                // Update feed state
+                setFeedState(prev => ({
+                    ...prev,
+                    posts: [...prev.posts, newPost]
+                }));
+
+                // Show notification
                 setNotifications(prev => [
                     {
                         id: Date.now(),
@@ -176,7 +235,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Timeout to disable initialLoad flag prevents spam on refresh
-        setTimeout(() => { initialLoad = false; }, 2000);
+        setTimeout(() => { 
+            initialLoad = false; 
+        }, 2000);
 
         return () => {
             unsubscribe();
@@ -558,10 +619,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setTrendingCount(0);
     };
 
+    // Pagination functions
+    const fetchMorePosts = async () => {
+        if (feedState.isLoadingMore || !feedState.hasMore) return;
+
+        setFeedState(prev => ({ ...prev, isLoadingMore: true }));
+
+        try {
+            // For now, simulate no more posts
+            // In future implementation, this would use cursor-based pagination
+            setTimeout(() => {
+                setFeedState(prev => ({
+                    ...prev,
+                    hasMore: false,
+                    isLoadingMore: false
+                }));
+            }, 1000);
+        } catch (error) {
+            console.error("Error fetching more posts:", error);
+            setFeedState(prev => ({
+                ...prev,
+                isLoadingMore: false
+            }));
+        }
+    };
+
+    const resetFeed = () => {
+        setFeedState({
+            posts: [],
+            nextCursor: undefined,
+            hasMore: true,
+            isLoadingMore: false
+        });
+        setPosts([]);
+    };
+
     return (
         <AppContext.Provider value={{
             user,
             posts,
+            feedState,
             updateUser,
             checkPseudoAvailability,
             registerUser,
@@ -582,7 +679,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             removeNotification,
             trendingCount,
             clearTrendingCount,
-            uploadFile
+            uploadFile,
+            fetchMorePosts,
+            resetFeed
         }}>
             {children}
 
