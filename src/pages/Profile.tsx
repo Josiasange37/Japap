@@ -15,12 +15,13 @@ import PostCard from '../components/PostCard';
 import AdUnit from '../components/AdUnit';
 
 export default function Profile() {
-    const { user, posts, updateUser } = useApp();
+    const { user, posts, updateUser, checkPseudoAvailability, showToast } = useApp();
     const { t } = useLanguage();
     const [showEdit, setShowEdit] = useState(false);
     const [editBio, setEditBio] = useState(user?.bio || '');
     const [editPseudo, setEditPseudo] = useState(user?.pseudo || '');
     const [activeTab, setActiveTab] = useState<'posts' | 'likes' | 'saved'>('posts');
+    const [isUpdating, setIsUpdating] = useState(false);
 
     if (!user) return null;
 
@@ -29,9 +30,32 @@ export default function Profile() {
 
     const displayPosts = activeTab === 'posts' ? myPosts : likedPosts;
 
+
     const handleSaveProfile = async () => {
-        await updateUser({ bio: editBio, pseudo: editPseudo });
-        setShowEdit(false);
+        if (!editPseudo.trim() || editPseudo.length < 3) {
+            return;
+        }
+
+        setIsUpdating(true);
+        try {
+            // Only check availability if pseudo actually changed
+            if (editPseudo !== user.pseudo) {
+                const available = await checkPseudoAvailability(editPseudo);
+                if (!available) {
+                    showToast("This pseudo is already taken!", 'error');
+                    setIsUpdating(false);
+                    return;
+                }
+            }
+
+            await updateUser({ bio: editBio, pseudo: editPseudo });
+            setShowEdit(false);
+        } catch (error: any) {
+            console.error("Failed to update profile:", error);
+            showToast(error.message || "Failed to update profile.", "error");
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     return (
@@ -78,10 +102,22 @@ export default function Profile() {
                                     />
                                 </div>
                                 <div className="flex gap-2">
-                                    <button onClick={handleSaveProfile} className="flex-1 bg-black text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase tracking-tighter">
-                                        <Check size={18} /> {t('onboarding.profile.button')}
+                                    <button
+                                        onClick={handleSaveProfile}
+                                        disabled={isUpdating}
+                                        className="flex-1 bg-black text-white py-4 rounded-2xl font-black text-sm active:scale-95 transition-transform flex items-center justify-center gap-2 uppercase tracking-tighter disabled:opacity-50"
+                                    >
+                                        {isUpdating ? (
+                                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                                        ) : (
+                                            <><Check size={18} /> {t('onboarding.profile.button')}</>
+                                        )}
                                     </button>
-                                    <button onClick={() => setShowEdit(false)} className="px-6 bg-[var(--bg-secondary)] py-4 rounded-2xl font-black text-sm active:scale-95 transition-transform">
+                                    <button
+                                        onClick={() => setShowEdit(false)}
+                                        disabled={isUpdating}
+                                        className="px-6 bg-[var(--bg-secondary)] py-4 rounded-2xl font-black text-sm active:scale-95 transition-transform disabled:opacity-50"
+                                    >
                                         <X size={18} />
                                     </button>
                                 </div>

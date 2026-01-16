@@ -95,20 +95,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (user?.pseudo) {
                 const normalized = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
                 const userRef = ref(rtdb, `users/${normalized}`);
-                const snapshot = await get(userRef);
 
-                if (!snapshot.exists()) {
-                    console.log("User record not found in RTDB, clearing local state.");
-                    setUser(null);
-                    localStorage.removeItem('japap_user');
-                } else {
-                    // Sync any updates from server to local
+                try {
+                    const snapshot = await get(userRef);
+
+                    if (!snapshot.exists()) {
+                        console.warn("User record not found in RTDB, clearing local state.");
+                        setUser(null);
+                        localStorage.removeItem('japap_user');
+                        return;
+                    }
+
                     const serverUser = snapshot.val();
+
+                    // Security check: ensure UID matches if present
+                    if (serverUser.uid && auth.currentUser && serverUser.uid !== auth.currentUser.uid) {
+                        console.error("UID mismatch! Potential identity hijacking attempt detected.");
+                        setUser(null);
+                        localStorage.removeItem('japap_user');
+                        return;
+                    }
+
+                    // Sync any updates from server to local initially
                     if (JSON.stringify(serverUser) !== JSON.stringify(user)) {
+                        console.log("Syncing user data from server...");
                         setUser(serverUser);
                         localStorage.setItem('japap_user', JSON.stringify(serverUser));
                     }
+                } catch (err) {
+                    console.error("Error verifying user:", err);
                 }
+            } else if (auth.currentUser) {
+                // We have a firebase session but no local profile? 
+                // Don't do anything yet, the RequireOnboarding will handle redirection
             }
         };
 
@@ -163,9 +182,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         setTimeout(() => { initialLoad = false; }, 2000);
 
+        // User Data Listener (Real-time sync)
+        let userUnsubscribe: (() => void) | undefined;
+        if (user?.pseudo) {
+            const normalized = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+            const userRef = ref(rtdb, `users/${normalized}`);
+            userUnsubscribe = onValue(userRef, (snapshot) => {
+                const serverUser = snapshot.val();
+                if (serverUser) {
+                    if (JSON.stringify(serverUser) !== JSON.stringify(user)) {
+                        setUser(serverUser);
+                        localStorage.setItem('japap_user', JSON.stringify(serverUser));
+                    }
+                } else {
+                    // Deleted from server
+                    setUser(null);
+                    localStorage.removeItem('japap_user');
+                }
+            });
+        }
+
         return () => {
             unsubscribe();
             notifUnsub();
+            if (userUnsubscribe) userUnsubscribe();
         };
     }, [user?.pseudo]);
 
@@ -208,12 +248,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const updateUser = async (updates: Partial<UserProfile>) => {
         if (!user?.pseudo) return;
         try {
-            await JapapAPI.updateUser(user.pseudo, updates);
+            const oldPseudo = user.pseudo;
+            await JapapAPI.updateUser(oldPseudo, updates);
+
+            // If pseudo changed, the API handled the DB move, 
+            // the onValue listener for the OLD path will trigger and clear the user.
+            // But we want to immediately update the local state to the NEW path.
             const newUser = { ...user, ...updates };
             setUser(newUser);
             localStorage.setItem('japap_user', JSON.stringify(newUser));
-        } catch (error) {
-            showToast("Failed to update profile.", "error");
+
+            showToast("Profile updated!", "success");
+        } catch (error: any) {
+            showToast(error.message || "Failed to update profile.", "error");
         }
     };
 
