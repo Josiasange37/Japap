@@ -68,13 +68,17 @@ export default function CreatePost() {
         try {
             let finalContent = content;
             let finalCaption = undefined;
+            let mediaFileToUpload = null;
 
             if (mediaFile) {
-                showToast("Uploading media...", "info");
-                finalContent = await uploadFile(mediaFile, type);
+                // For LinkedIn-style posting, we don't wait for upload
+                // Set placeholder content and pass the file for background processing
+                finalContent = "Processing media...";
                 finalCaption = content;
+                mediaFileToUpload = mediaFile;
             }
 
+            // Fast post creation - immediate response
             await addPost({
                 content: finalContent,
                 caption: finalCaption,
@@ -82,13 +86,13 @@ export default function CreatePost() {
                 timestamp: Date.now(),
                 liked: false,
                 disliked: false
-            }, isAnonymous);
+            }, isAnonymous, mediaFileToUpload);
 
-            showToast(t('create.success'));
+            // Immediate navigation - no waiting for upload
             navigate('/');
         } catch (err) {
             console.error(err);
-            showToast("Failed to post scoop", "error");
+            showToast("Failed to create post", "error");
         } finally {
             setIsPosting(false);
         }

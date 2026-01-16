@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
-import { ref, onValue, query, limitToLast, onChildAdded } from 'firebase/database';
+import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update } from 'firebase/database';
 import { signInAnonymously } from 'firebase/auth';
 import { rtdb, auth } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
@@ -25,7 +25,7 @@ interface AppContextType {
     updateUser: (updates: Partial<UserProfile>) => Promise<void>;
     checkPseudoAvailability: (pseudo: string) => Promise<boolean>;
     registerUser: (pseudo: string, avatar: string | null) => Promise<void>;
-    addPost: (post: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous?: boolean) => Promise<void>;
+    addPost: (post: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous?: boolean, mediaFile?: File | null) => Promise<string | undefined>;
     likePost: (id: string) => Promise<void>;
     dislikePost: (id: string) => Promise<void>;
     addReaction: (postId: string, emoji: string) => Promise<void>;
@@ -192,16 +192,111 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const addPost = async (postData: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous: boolean = true) => {
+    const addPost = async (newPostData: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous: boolean = true, mediaFile?: File | null) => {
+        if (!user && !isAnonymous) return;
+
         const author = isAnonymous
             ? { id: 'anon', username: 'Anonymous Gossip', avatar: null }
             : { id: user?.pseudo || 'anon', username: user?.pseudo || 'Anonymous', avatar: user?.avatar || null };
 
+        const newPostRef = push(ref(rtdb, 'posts'));
+
+        // Check if this is a media post that needs processing
+        const isMediaPost = mediaFile && ['image', 'video', 'audio'].includes(newPostData.type);
+
+        // Create post with placeholder if media file provided
+        const newPost = {
+            ...newPostData,
+            author,
+            timestamp: serverTimestamp(),
+            stats: { likes: 0, dislikes: 0, comments: 0, views: 0 },
+            reactions: {},
+            // Processing state for media posts
+            processing: isMediaPost,
+            processingProgress: isMediaPost ? 0 : null,
+            temporaryContent: isMediaPost ? newPostData.content : null
+        };
+
         try {
-            await JapapAPI.createPost({ ...postData, author });
-            showToast("Scoop posted!", "success");
+            // Phase 1: Create post immediately
+            await set(newPostRef, newPost);
+
+            if (isMediaPost) {
+                // Phase 2: Show immediate confirmation and process media in background
+                showToast("Your post is being uploaded and will appear shortly!", "success");
+
+                // Start background processing
+                if (mediaFile) {
+                    processMediaInBackground(newPostRef.key!, newPost, mediaFile, author, newPostData);
+                }
+            } else {
+                showToast("Scoop posted successfully!", "success");
+            }
+
+            return newPostRef.key;
         } catch (error) {
-            showToast("Failed to post.", "error");
+            console.error("Error creating post:", error);
+            showToast("Failed to post scoop.", "error");
+            throw error;
+        }
+    };
+
+    // Background media processing
+    const processMediaInBackground = async (
+        postId: string,
+        post: any,
+        mediaFile: File,
+        author: any,
+        originalData: any
+    ) => {
+        try {
+            // Update processing progress
+            await update(ref(rtdb, `posts/${postId}`), {
+                processingProgress: 10
+            });
+
+            // Upload media
+            const mediaUrl = await uploadFile(mediaFile, post.type);
+
+            // Update processing progress
+            await update(ref(rtdb, `posts/${postId}`), {
+                processingProgress: 80
+            });
+
+            // Update post with final media URL
+            await update(ref(rtdb, `posts/${postId}`), {
+                content: mediaUrl,
+                processing: false,
+                processingProgress: 100
+            });
+
+            // Phase 3: Notify user that post is live
+            showToast("Your post is now live! 🎉", "success");
+
+            // Send notification to current user
+            if (user?.pseudo) {
+                const normalizedPseudo = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                const notifRef = push(ref(rtdb, `notifications/${normalizedPseudo}`));
+                await set(notifRef, {
+                    type: 'post_live',
+                    title: 'Your Post is Live!',
+                    message: 'Your media post has been successfully uploaded and is now visible to everyone.',
+                    postId,
+                    timestamp: serverTimestamp(),
+                    read: false
+                });
+            }
+
+        } catch (error) {
+            console.error("Error processing media:", error);
+
+            // Mark processing as failed
+            await update(ref(rtdb, `posts/${postId}`), {
+                processing: false,
+                processingError: true
+            });
+
+            showToast("Failed to process media. Your post may not display correctly.", "error");
         }
     };
 
@@ -341,4 +436,3 @@ export function useApp() {
     if (!context) throw new Error('useApp must be used within AppProvider');
     return context;
 }
-
