@@ -202,7 +202,7 @@ export const JapapAPI = {
     async addComment(postId: string, comment: any): Promise<string> {
         const newCommentRef = push(ref(rtdb, `comments/${postId}`));
         const commentId = newCommentRef.key as string;
-        await set(newCommentRef, { ...comment, id: commentId, timestamp: Date.now() });
+        await set(newCommentRef, { ...comment, id: commentId, timestamp: serverTimestamp() });
 
         // Increment count
         const postStatsRef = ref(rtdb, `posts/${postId}/stats/comments`);

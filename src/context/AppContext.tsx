@@ -415,7 +415,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     const addComment = async (postId: string, text: string, replyTo?: GossipComment) => {
-        if (!user) return;
+        if (!user) {
+            console.error("Cannot add comment: No user in state");
+            showToast("You must be registered to comment.", "error");
+            return;
+        }
+
+        console.log("AppContext addComment calling API with:", { postId, text, pseudo: user.pseudo });
+
         const comment = {
             text,
             author: { id: user.pseudo, username: user.pseudo, avatar: user.avatar },

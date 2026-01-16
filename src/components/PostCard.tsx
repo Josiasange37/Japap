@@ -380,19 +380,20 @@ export default function PostCard({ post }: PostCardProps) {
 
             {/* Reactions Display */}
             {post.reactions && Object.keys(post.reactions).length > 0 && (
-                <div className="px-4 py-2 flex gap-2 flex-wrap">
+                <div className="px-4 py-2 flex gap-2 flex-wrap items-center justify-start max-w-full overflow-hidden">
                     {Object.entries(post.reactions).map(([emoji, count]) => (
-                        <button
+                        <motion.button
                             key={emoji}
+                            whileTap={{ scale: 0.95 }}
                             onClick={() => addReaction(post.id, emoji)}
-                            className={`px-2 py-1 rounded-full text-xs font-bold border flex items-center gap-1 transition-all ${post.userReaction === emoji
-                                ? 'bg-[var(--brand)] text-white border-[var(--brand)]'
-                                : 'bg-[var(--bg-secondary)] border-[var(--border)] hover:bg-[var(--border)]'
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all shadow-sm ${post.userReaction === emoji
+                                ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-pink-500/20'
+                                : 'bg-[var(--bg-secondary)] border-[var(--border)] hover:border-[var(--text-muted)] hover:bg-[var(--border)]'
                                 }`}
                         >
-                            <span>{emoji}</span>
+                            <span className="text-sm">{emoji}</span>
                             <span>{count}</span>
-                        </button>
+                        </motion.button>
                     ))}
                 </div>
             )}
@@ -405,8 +406,8 @@ export default function PostCard({ post }: PostCardProps) {
             </div>
 
             {/* Interactions */}
-            <div className="px-2 py-1 flex items-center justify-between border-t border-[var(--border)]">
-                <div className="flex items-center gap-1">
+            <div className="px-2 py-1 flex flex-wrap items-center justify-between border-t border-[var(--border)] gap-y-1">
+                <div className="flex items-center gap-1 flex-wrap">
                     <ActionButton
                         icon={Heart}
                         active={isLiked}
