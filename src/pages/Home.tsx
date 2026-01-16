@@ -53,8 +53,7 @@ export default function Home() {
                             transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                             className="w-12 h-12 border-4 border-[var(--bg-secondary)] border-t-[var(--brand)] rounded-full mb-6"
                         />
-                        Patienter pour le nouveau japap du moment...
-
+                        {t('home.loading')}
                     </div>
                 ) : posts.length > 0 ? (
                     <>

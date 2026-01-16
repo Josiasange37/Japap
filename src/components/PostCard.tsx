@@ -7,21 +7,21 @@ import {
     Repeat2,
     MoreHorizontal,
     ThumbsDown,
-    Play,
     Volume2,
     AlertCircle,
     Flag,
     Copy,
     ExternalLink,
     Trash2,
-    SmilePlus
+    SmilePlus,
+    ChevronRight,
 } from 'lucide-react';
 import type { Post } from '../types';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { parseTextWithHashtags } from '../utils/text';
+import { auth } from '../firebase';
 
-import AdOverlay from './AdOverlay';
 import ReactionPicker from './ReactionPicker';
 
 interface PostCardProps {
@@ -39,17 +39,16 @@ export default function PostCard({ post }: PostCardProps) {
     const [isReshared, setIsReshared] = useState(false);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
 
-    const isViral = post.stats.views > 1000 || post.stats.likes > 100;
-    const [showAd, setShowAd] = useState(true);
+
 
     const isRiskyContent = post.content.toLowerCase().includes('leak') ||
         post.content.toLowerCase().includes('scandal') ||
         post.content.length > 500;
 
     // Check if post is processing media
-    const isProcessing = (post as any).processing || false;
-    const processingProgress = (post as any).processingProgress || 0;
-    const processingError = (post as any).processingError || false;
+    const isProcessing = (post as Post & { processing?: boolean; processingProgress?: number; processingError?: boolean }).processing || false;
+    const processingProgress = (post as Post & { processing?: boolean; processingProgress?: number; processingError?: boolean }).processingProgress || 0;
+    const processingError = (post as Post & { processing?: boolean; processingProgress?: number; processingError?: boolean }).processingError || false;
 
     // Sync local state with real data when it changes
     React.useEffect(() => {
@@ -105,7 +104,7 @@ export default function PostCard({ post }: PostCardProps) {
             try {
                 await navigator.clipboard.writeText(`${shareText}${shareUrl}`);
                 showToast("Lien du kongosa copié");
-            } catch (err) {
+            } catch {
                 showToast("Échec de la copie. Réessaie.");
             }
         }
@@ -186,7 +185,7 @@ export default function PostCard({ post }: PostCardProps) {
                                 >
                                     <Flag size={18} /> Report Scoop
                                 </button>
-                                {(post.author.username === 'Anonymous Gossip' || post.author.username === user?.pseudo) && (
+                                {(post.author.id === user?.pseudo || (post.author.id === auth.currentUser?.uid)) && (
                                     <button
                                         onClick={() => {
                                             deletePost(post.id);
@@ -477,7 +476,7 @@ function ActionButton({
     count,
     onClick
 }: {
-    icon: any,
+    icon: React.ComponentType<{ size?: number; className?: string }>,
     active?: boolean,
     activeColor?: string,
     count?: number,
@@ -498,8 +497,4 @@ function ActionButton({
             {count !== undefined && <span className="text-sm font-bold">{count}</span>}
         </motion.button>
     );
-}
-
-function ChevronRight({ size, className }: { size: number, className?: string }) {
-    return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6" /></svg>
 }

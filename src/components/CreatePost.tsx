@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
 import {
     Image as ImageIcon,
     Video,
@@ -15,21 +14,20 @@ import { useNavigate } from 'react-router-dom';
 
 export default function CreatePost() {
     const [content, setContent] = useState('');
-    const [mediaProgress, setMediaProgress] = useState<number | null>(null);
     const [mediaFile, setMediaFile] = useState<File | null>(null);
     const [mediaPreview, setMediaPreview] = useState<string | null>(null);
     const [type, setType] = useState<'text' | 'image' | 'video' | 'audio'>('text');
     const [isAnonymous, setIsAnonymous] = useState(true);
     const [isPosting, setIsPosting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const { addPost, showToast, uploadFile } = useApp();
+    const { addPost, showToast } = useApp();
     const { t } = useLanguage();
     const navigate = useNavigate();
 
     const LIMITS = {
         image: 5 * 1024 * 1024, // 5MB
-        video: 25 * 1024 * 1024, // 25MB
-        audio: 15 * 1024 * 1024, // 15MB
+        video: 50 * 1024 * 1024, // 50MB
+        audio: 20 * 1024 * 1024, // 20MB
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,33 +63,22 @@ export default function CreatePost() {
     const handlePost = async () => {
         if (!content && !mediaPreview) return;
         setIsPosting(true);
+
         try {
-            let finalContent = content;
-            let finalCaption = undefined;
-            let mediaFileToUpload = null;
-
-            if (mediaFile) {
-                // For LinkedIn-style posting, we don't wait for upload
-                // Set placeholder content and pass the file for background processing
-                finalContent = "Processing media...";
-                finalCaption = content;
-                mediaFileToUpload = mediaFile;
-            }
-
-            // Fast post creation - immediate response
-            await addPost({
-                content: finalContent,
-                caption: finalCaption,
+            const postData = {
+                content: content || '',
+                caption: mediaFile ? content : undefined,
                 type: mediaFile ? type : 'text',
                 timestamp: Date.now(),
                 liked: false,
                 disliked: false
-            }, isAnonymous, mediaFileToUpload);
+            };
 
-            // Immediate navigation - no waiting for upload
+            await addPost(postData, isAnonymous, mediaFile);
             navigate('/');
-        } catch (err) {
-            console.error(err);
+
+        } catch (error) {
+            console.error(error);
             showToast("Failed to create post", "error");
         } finally {
             setIsPosting(false);
@@ -139,6 +126,7 @@ export default function CreatePost() {
                                 <audio src={mediaPreview} controls className="w-full h-8" />
                             </div>
                         )}
+
                         <button
                             onClick={() => {
                                 setMediaPreview(null);
@@ -164,7 +152,7 @@ export default function CreatePost() {
                         disabled={(!content && !mediaPreview) || isPosting}
                         className={`flex items-center gap-2 px-8 py-3.5 rounded-2xl font-black text-lg shadow-lg transition-all ${(!content && !mediaPreview) || isPosting ? 'bg-[var(--border)] text-[var(--text-muted)]' : 'bg-[var(--brand)] text-white shadow-pink-500/20 active:scale-95'}`}
                     >
-                        {isPosting ? "Posting..." : <>{t('create.button')} <Send size={20} /></>}
+                        {isPosting ? "Creating post..." : <>{t('create.button')} <Send size={20} /></>}
                     </button>
                 </div>
             </div>
@@ -172,7 +160,7 @@ export default function CreatePost() {
     );
 }
 
-function MediaButton({ icon: Icon, onClick, color }: { icon: any, onClick: () => void, color: string }) {
+function MediaButton({ icon: Icon, onClick, color }: { icon: React.ComponentType<{ size?: number }>, onClick: () => void, color: string }) {
     return (
         <button
             onClick={onClick}

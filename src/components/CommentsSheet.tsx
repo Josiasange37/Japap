@@ -30,8 +30,8 @@ export default function CommentsSheet() {
     useEffect(() => {
         if (!postId) return;
 
-        setIsLoadingComments(true);
         const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'), limitToLast(50));
+        setIsLoadingComments(true);
 
         const unsubscribe = onValue(commentsRef, (snapshot) => {
             const data = snapshot.val();

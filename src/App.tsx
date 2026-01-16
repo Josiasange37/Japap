@@ -8,6 +8,7 @@ import Trending from './pages/Trending';
 import Notifications from './pages/Notifications';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import CommunityGuidelines from './pages/CommunityGuidelines';
+import Blog from './pages/Blog';
 import { useApp } from './context/AppContext';
 import { usePeriodicNotification } from './hooks/usePeriodicNotification';
 
@@ -53,6 +54,7 @@ function App() {
       {/* Public Pages (Always accessible for AdSense bots) */}
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/guidelines" element={<CommunityGuidelines />} />
+      <Route path="/blog" element={<Blog />} />
 
       {/* Catch all */}
       <Route path="*" element={<Navigate to="/" replace />} />

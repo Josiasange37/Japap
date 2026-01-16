@@ -1,10 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
+const generateRandomBars = useCallback((count: number): number[] => {
+    const seed = Math.random();
+    return Array.from({ length: count }, (_, i) => {
+        const x = (i / count) * seed;
+        return Math.sin(x * Math.PI * 4) * 0.5 + 0.5 + Math.random() * 0.2;
+    });
+}, []);
+
 export default function Waveform({ isPlaying }: { isPlaying: boolean }) {
-    // Generate random heights for the bars
+    // Generate random heights for bars
     const barCount = 40;
-    const [bars, setBars] = useState<number[]>(Array.from({ length: barCount }, () => Math.random()));
+    const [bars, setBars] = useState<number[]>(generateRandomBars(barCount));
 
     useEffect(() => {
         if (!isPlaying) return;

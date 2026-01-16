@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Home,
-    Search,
     PlusSquare,
     Bell,
     User,
@@ -11,7 +10,6 @@ import {
     Menu,
     X,
     TrendingUp,
-    Zap,
     Languages,
     ShieldCheck,
     BookOpen,

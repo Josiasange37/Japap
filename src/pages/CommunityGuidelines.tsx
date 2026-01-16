@@ -13,21 +13,39 @@ export default function CommunityGuidelines() {
                     </div>
                     <div>
                         <h1 className="text-3xl font-black tracking-tight">Community Guidelines</h1>
-                        <p className="text-[var(--text-muted)] font-bold text-sm uppercase tracking-widest">The Gossip Code of Conduct</p>
+                        <p className="text-[var(--text-muted)] font-bold text-sm uppercase tracking-widest">Community Code of Conduct</p>
                     </div>
                 </div>
 
                 <div className="space-y-6">
                     <p className="text-lg font-bold italic leading-relaxed opacity-90">
-                        "Great gossip requires great responsibility. Keep it juicy, but keep it human."
+                        "Great communities require great responsibility. Share authentic stories, respect others, and build connections."
                     </p>
 
                     <div className="grid gap-4">
-                        <GuidelineCard
+<GuidelineCard
                             icon={Heart}
-                            title="No Hate Speech"
-                            desc="We have zero tolerance for hate speech related to race, religion, sexual orientation, or gender. Toxicity is not tea."
+                            title="Respectful Communication"
+                            desc="We have zero tolerance for hate speech related to race, religion, sexual orientation, or gender. All content must be respectful and inclusive."
                             color="text-emerald-500"
+                        />
+                        <GuidelineCard
+                            icon={UserX}
+                            title="No Harassment or Bullying"
+                            desc="Targeted bullying, doxing (sharing private info), or threats will result in immediate account suspension and permanent ban."
+                            color="text-red-500"
+                        />
+                        <GuidelineCard
+                            icon={AlertTriangle}
+                            title="Family-Friendly Content Only"
+                            desc="Graphic sexual content, extreme violence, or adult material is strictly prohibited. All content must be suitable for all ages."
+                            color="text-amber-500"
+                        />
+                        <GuidelineCard
+                            icon={CheckCircle}
+                            title="Accurate Information"
+                            desc="Don't share dangerous misinformation or harmful content. All posts should be truthful and constructive."
+                            color="text-blue-500"
                         />
                         <GuidelineCard
                             icon={UserX}
@@ -54,15 +72,19 @@ export default function CommunityGuidelines() {
                         <ul className="space-y-4 font-bold text-sm opacity-80">
                             <li className="flex items-start gap-3">
                                 <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">1</span>
-                                <span>AI-powered keyword filtering to blur toxic content.</span>
+                                <span>AI-powered content filtering automatically blocks inappropriate content.</span>
                             </li>
                             <li className="flex items-start gap-3">
                                 <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">2</span>
-                                <span>Community reporting (Any post reported 5 times is auto-hidden).</span>
+                                <span>Community reporting system (3 reports = automatic review, 5+ reports = temporary removal).</span>
                             </li>
                             <li className="flex items-start gap-3">
                                 <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">3</span>
-                                <span>Manual review by our shadow moderators.</span>
+                                <span>24/7 moderation team reviews flagged content and takes appropriate action.</span>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <span className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center shrink-0">4</span>
+                                <span>Verified users have higher trust scores and enhanced posting capabilities.</span>
                             </li>
                         </ul>
                     </div>

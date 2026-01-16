@@ -31,6 +31,10 @@ export interface Post {
     userReaction?: string;
     commentsList?: GossipComment[];
     category?: string;
+    // Media processing
+    processing?: boolean;
+    processingProgress?: number;
+    processingError?: boolean;
 }
 
 export interface GossipComment {

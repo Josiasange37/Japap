@@ -196,7 +196,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!user && !isAnonymous) return;
 
         const author = isAnonymous
-            ? { id: 'anon', username: 'Anonymous Gossip', avatar: null }
+            ? { id: auth.currentUser?.uid || 'anon', username: 'Anonymous Gossip', avatar: null }
             : { id: user?.pseudo || 'anon', username: user?.pseudo || 'Anonymous', avatar: user?.avatar || null };
 
         const newPostRef = push(ref(rtdb, 'posts'));
