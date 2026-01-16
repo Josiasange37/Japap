@@ -24,13 +24,13 @@ export const JapapAPI = {
         }
     },
 
-    async registerUser(pseudo: string, avatar: string | null): Promise<UserProfile> {
+    async registerUser(pseudo: string, avatar: string | null, bio: string): Promise<UserProfile> {
         const normalized = normalizePseudo(pseudo);
         const newUser: UserProfile = {
             pseudo,
             avatar,
             onboarded: true,
-            bio: "Spilling tea since forever"
+            bio: bio || "Spilling tea since forever"
         };
         await set(ref(rtdb, `users/${normalized}`), newUser);
         return newUser;

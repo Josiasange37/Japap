@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
-import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update } from 'firebase/database';
+import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get } from 'firebase/database';
 import { signInAnonymously } from 'firebase/auth';
 import { rtdb, auth } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
@@ -24,7 +24,7 @@ interface AppContextType {
     feedState: PaginatedFeedState;
     updateUser: (updates: Partial<UserProfile>) => Promise<void>;
     checkPseudoAvailability: (pseudo: string) => Promise<boolean>;
-    registerUser: (pseudo: string, avatar: string | null) => Promise<void>;
+    registerUser: (pseudo: string, avatar: string | null, bio: string) => Promise<void>;
     addPost: (post: Omit<Post, 'id' | 'author' | 'stats'>, isAnonymous?: boolean, mediaFile?: File | null) => Promise<string | undefined>;
     likePost: (id: string) => Promise<void>;
     dislikePost: (id: string) => Promise<void>;
@@ -91,8 +91,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
+        const verifyUser = async () => {
+            if (user?.pseudo) {
+                const normalized = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                const userRef = ref(rtdb, `users/${normalized}`);
+                const snapshot = await get(userRef);
+
+                if (!snapshot.exists()) {
+                    console.log("User record not found in RTDB, clearing local state.");
+                    setUser(null);
+                    localStorage.removeItem('japap_user');
+                } else {
+                    // Sync any updates from server to local
+                    const serverUser = snapshot.val();
+                    if (JSON.stringify(serverUser) !== JSON.stringify(user)) {
+                        setUser(serverUser);
+                        localStorage.setItem('japap_user', JSON.stringify(serverUser));
+                    }
+                }
+            }
+        };
+
         if (!auth.currentUser) {
-            signInAnonymously(auth).catch(err => console.error("Anon auth failed", err));
+            signInAnonymously(auth)
+                .then(() => verifyUser())
+                .catch(err => console.error("Anon auth failed", err));
+        } else {
+            verifyUser();
         }
 
         const postsQuery = query(ref(rtdb, 'posts'), limitToLast(20));
@@ -169,9 +194,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     const checkPseudoAvailability = (pseudo: string) => JapapAPI.checkPseudoAvailability(pseudo);
 
-    const registerUser = async (pseudo: string, avatar: string | null) => {
+    const registerUser = async (pseudo: string, avatar: string | null, bio: string) => {
         try {
-            const newUser = await JapapAPI.registerUser(pseudo, avatar);
+            const newUser = await JapapAPI.registerUser(pseudo, avatar, bio);
             setUser(newUser);
             localStorage.setItem('japap_user', JSON.stringify(newUser));
             showToast("Welcome to Japap!", "success");

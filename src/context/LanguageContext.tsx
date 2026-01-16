@@ -101,6 +101,8 @@ const translations = {
         'onboarding.profile.title': 'Créez votre',
         'onboarding.profile.subtitle': 'Alias',
         'onboarding.profile.label': 'VOTRE PSEUDONYME',
+        'onboarding.profile.bioLabel': 'VOTRE BIO (OPTIONNEL)',
+        'onboarding.profile.bioPlaceholder': 'Racontez-nous un peu sur vous...',
         'onboarding.profile.button': 'TERMINER LA CONFIG',
         'onboarding.error.pseudoTaken': 'Ce pseudo est déjà pris, wanda !',
     },
@@ -196,6 +198,8 @@ const translations = {
         'onboarding.profile.title': 'Create your',
         'onboarding.profile.subtitle': 'Alias',
         'onboarding.profile.label': 'SCOOP PSEUDONYM',
+        'onboarding.profile.bioLabel': 'YOUR BIO (OPTIONAL)',
+        'onboarding.profile.bioPlaceholder': 'Tell us a bit about yourself...',
         'onboarding.profile.button': 'COMPLETE SETUP',
         'onboarding.error.pseudoTaken': 'This pseudo is already taken!',
     }

@@ -9,6 +9,7 @@ export default function Onboarding() {
     const [step, setStep] = useState(0);
     const navigate = useNavigate();
     const [pseudo, setPseudo] = useState('');
+    const [bio, setBio] = useState('');
     const [avatar, setAvatar] = useState<string | null>(null);
 
     const { registerUser, checkPseudoAvailability, showToast } = useApp();
@@ -26,7 +27,7 @@ export default function Onboarding() {
                 return;
             }
 
-            await registerUser(pseudo, avatar);
+            await registerUser(pseudo, avatar, bio);
             navigate('/', { replace: true });
         } catch (error) {
             console.error("Failed to finish onboarding:", error);
@@ -72,6 +73,8 @@ export default function Onboarding() {
                                 setPseudo={setPseudo}
                                 avatar={avatar}
                                 setAvatar={setAvatar}
+                                bio={bio}
+                                setBio={setBio}
                                 onFinish={handleFinish}
                                 isLoading={isLoading}
                                 t={t}
@@ -161,8 +164,9 @@ function PolicyItem({ icon: Icon, title, desc, color }: { icon: any, title: stri
     )
 }
 
-function ProfileStep({ pseudo, setPseudo, avatar, setAvatar, onFinish, isLoading, t }: {
+function ProfileStep({ pseudo, setPseudo, bio, setBio, avatar, setAvatar, onFinish, isLoading, t }: {
     pseudo: string, setPseudo: (s: string) => void,
+    bio: string, setBio: (s: string) => void,
     avatar: string | null, setAvatar: (s: string | null) => void,
     onFinish: () => void,
     isLoading: boolean,
@@ -212,6 +216,17 @@ function ProfileStep({ pseudo, setPseudo, avatar, setAvatar, onFinish, isLoading
                     onChange={(e) => setPseudo(e.target.value)}
                     placeholder="@tea_master"
                     className="w-full bg-[var(--bg-secondary)] p-6 rounded-[28px] font-black text-xl outline-none border-2 border-transparent focus:border-[var(--brand)] transition-all"
+                />
+            </div>
+
+            <div className="w-full space-y-2 mb-8">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] ml-6">{t('onboarding.profile.bioLabel')}</label>
+                <textarea
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    placeholder={t('onboarding.profile.bioPlaceholder')}
+                    rows={2}
+                    className="w-full bg-[var(--bg-secondary)] p-6 rounded-[28px] font-bold text-sm outline-none border-2 border-transparent focus:border-[var(--brand)] transition-all resize-none"
                 />
             </div>
 
