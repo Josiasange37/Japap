@@ -8,11 +8,19 @@
     },
     "posts": {
       ".read": "true",
-      ".write": "true"
+      ".write": "true",
+      ".indexOn": [
+        "timestamp"
+      ]
     },
     "comments": {
-      ".read": "true",
-      ".write": "true"
+      "$postId": {
+        ".read": "true",
+        ".write": "true",
+        ".indexOn": [
+          "timestamp"
+        ]
+      }
     }
   }
 }

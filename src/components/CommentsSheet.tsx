@@ -5,9 +5,10 @@ import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import ReactionPicker from './ReactionPicker';
 import CommentRow from './CommentRow';
-import { ref, onValue, query, orderByChild } from 'firebase/database';
+import { ref, onValue, query, orderByChild, limitToLast } from 'firebase/database';
 import { rtdb } from '../firebase';
 import type { GossipComment } from '../types';
+import { getUserColor } from '../utils/colors';
 
 
 export default function CommentsSheet() {
@@ -32,7 +33,8 @@ export default function CommentsSheet() {
         }
 
         setIsLoadingComments(true);
-        const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'));
+        setIsLoadingComments(true);
+        const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'), limitToLast(50));
 
         const unsubscribe = onValue(commentsRef, (snapshot) => {
             const data = snapshot.val();
@@ -61,20 +63,29 @@ export default function CommentsSheet() {
         return () => unsubscribe();
     }, [postId]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!text.trim() || !postId) return;
 
-        if (!text.trim() || !postId) return;
+        console.log("Submitting comment:", { text, postId, replyingTo });
 
-        if (replyingTo) {
-            addComment(postId, text.trim(), replyingTo);
-        } else {
-            addComment(postId, text.trim());
+        if (!text.trim()) return;
+        if (!postId) {
+            console.error("No postId found in CommentsSheet");
+            return;
         }
 
-        setText('');
-        setReplyingTo(null);
+        try {
+            if (replyingTo) {
+                await addComment(postId, text.trim(), replyingTo);
+            } else {
+                await addComment(postId, text.trim(), undefined);
+            }
+            console.log("Comment submitted successfully");
+            setText('');
+            setReplyingTo(null);
+        } catch (error) {
+            console.error("Failed to submit comment:", error);
+        }
     };
 
     // Auto-focus input when opening or replying
@@ -152,17 +163,23 @@ export default function CommentsSheet() {
                                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="bg-[#1f2c34] rounded-lg p-2.5 flex items-center justify-between border-l-4 border-[#00a884] shadow-lg mb-1"
+                                        className="bg-[#1f2c34] rounded-lg p-2.5 flex items-center justify-between border-l-4 shadow-lg mb-1"
+                                        style={{ borderColor: getUserColor(replyingTo.author.username) }}
                                     >
                                         <div className="flex flex-col gap-0.5 min-w-0">
-                                            <span className="text-[11px] font-bold text-[#00a884]">Replying to @{replyingTo.author.username}</span>
+                                            <span
+                                                className="text-[11px] font-bold"
+                                                style={{ color: getUserColor(replyingTo.author.username) }}
+                                            >
+                                                Replying to @{replyingTo.author.username}
+                                            </span>
                                             <p className="text-xs text-zinc-300 line-clamp-1 italic truncate">"{replyingTo.text}"</p>
                                         </div>
                                         <button
                                             onClick={() => setReplyingTo(null)}
-                                            className="p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2"
+                                            className="p-2 hover:bg-white/10 rounded-full transition-colors ml-2"
                                         >
-                                            <X size={16} className="text-zinc-400" />
+                                            <X size={18} className="text-zinc-400" />
                                         </button>
                                     </motion.div>
                                 )}

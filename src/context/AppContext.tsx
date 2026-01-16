@@ -2,8 +2,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
 import { ref, set, get, child, onValue, push, update, runTransaction, serverTimestamp, query, limitToLast, onChildAdded } from 'firebase/database';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { signInAnonymously } from 'firebase/auth';
-import { rtdb, auth } from '../firebase';
+import { rtdb, auth, storage } from '../firebase';
+import { formatRelativeTime } from '../utils/time';
 
 export interface Toast {
     id: string;
@@ -11,9 +13,16 @@ export interface Toast {
     type: 'success' | 'error' | 'info';
 }
 
+export interface PaginatedFeedState {
+    posts: Post[];
+    nextCursor?: string;
+    hasMore: boolean;
+    isLoadingMore: boolean;
+}
 interface AppContextType {
     user: UserProfile | null;
     posts: Post[];
+    feedState: PaginatedFeedState;
     updateUser: (updates: Partial<UserProfile>) => Promise<void>;
     checkPseudoAvailability: (pseudo: string) => Promise<boolean>;
     registerUser: (pseudo: string, avatar: string | null) => Promise<void>;
@@ -34,6 +43,9 @@ interface AppContextType {
     removeNotification: (id: number) => void;
     trendingCount: number;
     clearTrendingCount: () => void;
+    uploadFile: (file: File, folder?: string) => Promise<string>;
+    fetchMorePosts: () => Promise<void>;
+    resetFeed: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -44,17 +56,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return stored ? JSON.parse(stored) : null;
     });
 
-    const [posts, setPosts] = useState<Post[]>([]);
+    const [posts, setPosts] = useState<Post[]>(() => {
+        const cached = localStorage.getItem('japap_posts_cache');
+        try {
+            return cached ? JSON.parse(cached) : [];
+        } catch {
+            return [];
+        }
+    });
+
+    const [feedState, setFeedState] = useState<PaginatedFeedState>(() => ({
+        posts: posts,
+        nextCursor: undefined,
+        hasMore: true,
+        isLoadingMore: false
+    }));
     const [toasts, setToasts] = useState<Toast[]>([]);
     const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(() => {
+        const cached = localStorage.getItem('japap_posts_cache');
+        return !cached; // If we have cache, we don't start as loading
+    });
     const [trendingCount, setTrendingCount] = useState(3);
-    const [notifications, setNotifications] = useState([
-        { id: 1, type: 'trending', title: 'Trending Alert', message: 'Campus life is heating up!', time: '2m', read: false },
-        { id: 2, type: 'new_post', title: 'New Gossip', message: 'Check out the latest scoop in Campus Life', time: '15m', read: false },
-        { id: 3, type: 'reaction', title: 'New Like', message: 'Anonymous Gossip liked your post', time: '1h', read: false },
-        { id: 4, type: 'comment', title: 'New Comment', message: 'Someone commented on your post', time: '3h', read: false }
-    ]);
+    const [notifications, setNotifications] = useState<any[]>([]);
 
     const removeToast = (id: string) => {
         setToasts(prev => prev.filter(t => t.id !== id));
@@ -99,6 +123,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             signInAnonymously(auth).catch(err => console.error("Anon auth failed", err));
         }
 
+        // Optimistic Load from Cache
+        const cachedPosts = localStorage.getItem('japap_posts_cache');
+        if (cachedPosts) {
+            try {
+                const parsed = JSON.parse(cachedPosts);
+                setPosts(parsed);
+                setIsLoading(false); // Immediate visual load
+            } catch (e) {
+                console.error("Cache parse error", e);
+            }
+        }
+
         const postsQuery = query(ref(rtdb, 'posts'), limitToLast(20));
         const unsubscribe = onValue(postsQuery, (snapshot) => {
             const data = snapshot.val();
@@ -118,8 +154,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     liked: user?.pseudo ? data[key].users?.[user.pseudo]?.liked : false,
                     disliked: user?.pseudo ? data[key].users?.[user.pseudo]?.disliked : false,
                     userReaction: user?.pseudo ? data[key].users?.[user.pseudo]?.reaction : null
-                })).sort((a, b) => b.timestamp - a.timestamp);
+                })).sort((a, b) => a.timestamp - b.timestamp);
                 setPosts(loadedPosts);
+                setFeedState(prev => ({
+                    ...prev,
+                    posts: loadedPosts,
+                    hasMore: loadedPosts.length >= 20
+                }));
+                localStorage.setItem('japap_posts_cache', JSON.stringify(loadedPosts));
             } else {
                 setPosts([]);
             }
@@ -128,18 +170,55 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 
 
-        // Notifications Listener (New Posts)
-        // We use child_added on the same query to detect ONLY new items effectively if we were tracking strict timestamps,
-        // but for simplicity in this session, let's just listen to the last 1.
-        // Better approach: listen to 'posts' limitToLast(1) separately and check if it's new.
+        // Enhanced Real-time Updates for New Posts
+        // Listen for new posts and add them to the feed without full refresh
         const notificationsRef = query(ref(rtdb, 'posts'), limitToLast(1));
         let initialLoad = true;
+        let lastPostTimestamp: number | null = null;
 
         const notifUnsub = onChildAdded(notificationsRef, (snapshot) => {
-            if (initialLoad) return; // Skip the first one if it exists
             const post = snapshot.val();
+            const postId = snapshot.key;
+            
+            if (initialLoad) {
+                // Track the timestamp of the latest post on initial load
+                if (post && post.timestamp) {
+                    lastPostTimestamp = post.timestamp;
+                }
+                return;
+            }
+
             if (post && (!user?.pseudo || post.author.username !== user.pseudo)) {
                 // It's a new post from someone else
+                const newPost: Post = {
+                    id: postId,
+                    ...post,
+                    stats: {
+                        likes: 0,
+                        dislikes: 0,
+                        comments: 0,
+                        views: 0,
+                        ...post.stats
+                    },
+                    liked: user?.pseudo ? post.users?.[user.pseudo]?.liked : false,
+                    disliked: user?.pseudo ? post.users?.[user.pseudo]?.disliked : false,
+                    userReaction: user?.pseudo ? post.users?.[user.pseudo]?.reaction : null
+                };
+
+                // Optimistically add new post to the bottom of the feed
+                setPosts(prev => {
+                    const updatedPosts = [...prev, newPost];
+                    localStorage.setItem('japap_posts_cache', JSON.stringify(updatedPosts));
+                    return updatedPosts;
+                });
+
+                // Update feed state
+                setFeedState(prev => ({
+                    ...prev,
+                    posts: [...prev.posts, newPost]
+                }));
+
+                // Show notification
                 setNotifications(prev => [
                     {
                         id: Date.now(),
@@ -156,7 +235,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         });
 
         // Timeout to disable initialLoad flag prevents spam on refresh
-        setTimeout(() => { initialLoad = false; }, 2000);
+        setTimeout(() => { 
+            initialLoad = false; 
+        }, 2000);
 
         return () => {
             unsubscribe();
@@ -164,47 +245,65 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
     }, [user?.pseudo]);
 
-    // Personal Notifications Listener (Direct mentions/likes)
+    // Personal Notifications Listener (Full List Sync)
     useEffect(() => {
-        if (!user?.pseudo) return;
-        const normalizedPseudo = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
-        const myNotifsRef = query(ref(rtdb, `notifications/${normalizedPseudo}`), limitToLast(1));
+        if (!user?.pseudo) {
+            if (notifications.length > 0) setNotifications([]);
+            return;
+        }
 
-        const unsub = onChildAdded(myNotifsRef, (snapshot) => {
+        const normalizedPseudo = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const myNotifsRef = query(ref(rtdb, `notifications/${normalizedPseudo}`), limitToLast(50));
+
+        const unsubscribe = onValue(myNotifsRef, (snapshot) => {
             const data = snapshot.val();
-            if (data && data.timestamp > Date.now() - 10000) { // Only show recent ones (last 10s) to avoid spam on load
-                if (Notification.permission === 'granted') {
-                    const n = new Notification('Japap Social', {
-                        body: data.message,
-                        icon: '/vite.svg' // Ensure path is correct
-                    });
-                    n.onclick = () => window.focus();
+            if (data) {
+                const loadedNotifs = Object.keys(data).map(key => ({
+                    id: key,
+                    ...data[key],
+                    time: formatRelativeTime(data[key].timestamp)
+                })).sort((a, b) => b.timestamp - a.timestamp);
+
+                setNotifications(loadedNotifs);
+
+                // Show push notification for the very latest one if it's new
+                const latest = loadedNotifs[0];
+                if (latest && latest.timestamp > Date.now() - 5000) {
+                    if (Notification.permission === 'granted') {
+                        const n = new Notification('Japap Social', {
+                            body: latest.message,
+                            icon: '/vite.svg'
+                        });
+                        n.onclick = () => window.focus();
+                    }
+                    showToast(latest.message, 'info');
                 }
-                showToast(data.message, 'info');
-                // Update internal notification state
-                setNotifications(prev => [{
-                    id: Date.now(),
-                    type: data.type || 'info',
-                    title: 'New Interaction',
-                    message: data.message,
-                    time: 'Just now',
-                    read: false
-                }, ...prev]);
+            } else {
+                setNotifications([]);
             }
         });
 
-        return () => unsub();
+        return () => unsubscribe();
     }, [user?.pseudo]);
 
     // Helper to send notification
-    const sendSystemNotification = async (recipientPseudo: string, type: string, message: string, postId: string) => {
+    const sendSystemNotification = async (recipientPseudo: string, type: string, message: string, postId: string, title?: string) => {
         if (!recipientPseudo || !user?.pseudo || recipientPseudo === user.pseudo) return;
 
         const normalizedRecipient = recipientPseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
         const notifRef = push(ref(rtdb, `notifications/${normalizedRecipient}`));
+
+        // Map types to better titles if none provided
+        const defaultTitle =
+            type === 'reaction' ? 'New Reaction!' :
+                type === 'comment' ? 'New Comment!' :
+                    type === 'mention' ? 'Mentioned You!' :
+                        'New Update';
+
         await set(notifRef, {
             type,
             from: user.pseudo,
+            title: title || defaultTitle,
             message,
             postId,
             timestamp: serverTimestamp(),
@@ -291,6 +390,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const uploadFile = async (file: File, folder: string = 'media') => {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const sRef = storageRef(storage, `${folder}/${fileName}`);
+
+        try {
+            const snapshot = await uploadBytes(sRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            return downloadURL;
+        } catch (error) {
+            console.error("Upload error:", error);
+            throw error;
+        }
+    };
+
     const likePost = async (id: string) => {
         if (!user?.pseudo) return;
         const postRef = ref(rtdb, `posts/${id}`);
@@ -312,14 +426,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 } else {
                     post.stats.likes = (post.stats.likes || 0) + 1;
                     userState.liked = true;
-                    // Send notification
-                    // We need to do this outside transaction ideally, but for now we can't easily.
-                    // Instead call helper after. But we need post author! 
-                    // Transaction gives us post data. We can't side-effect easily here.
-                    // We will fetch post author separately or store it in user interaction? No.
-                    // Let's optimize: We assume we have post data in client 'posts' state usually?
-                    // No, safe way: read post once, then transact? Or just run side effect if we have post data in 'posts' state.
-                    // We will use the local 'posts' state to find author for notification.
+                    // FIX: If disliked, remove dislike for mutual exclusivity
+                    if (userState.disliked) {
+                        post.stats.dislikes = (post.stats.dislikes || 1) - 1;
+                        userState.disliked = false;
+                    }
                 }
 
                 if (!post.users) post.users = {};
@@ -398,15 +509,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
             return post;
         });
+
+        // Notification Side Effect
+        const targetPost = posts.find(p => p.id === postId);
+        if (targetPost && targetPost.author.username) {
+            sendSystemNotification(targetPost.author.username, 'reaction', `${user.pseudo} reacted to your post`, postId);
+        }
     };
 
     const addCommentReaction = async (postId: string, commentId: string, emoji: string) => {
         if (!user?.pseudo) return;
 
         const commentRef = ref(rtdb, `comments/${postId}/${commentId}`);
-        // We need to update two things potentially: 
-        // 1. The reaction count on the comment
-        // 2. The user's reaction on the comment (to toggle or switch)
+        let commentAuthor: string | null = null;
+        let isNewReaction = false;
 
         await runTransaction(commentRef, (comment) => {
             if (comment) {
@@ -414,13 +530,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 if (!comment.userReactions) comment.userReactions = {};
 
                 const oldReaction = comment.userReactions[user.pseudo];
+                commentAuthor = comment.author.username;
 
                 if (oldReaction === emoji) {
                     // Toggle off
                     comment.reactions[emoji] = (comment.reactions[emoji] || 1) - 1;
                     if (comment.reactions[emoji] <= 0) delete comment.reactions[emoji];
                     delete comment.userReactions[user.pseudo];
-                    comment.userReaction = null; // For local optimistic updates if we were mapping it, but `userReactions` map is source of truth
                 } else {
                     // Swap or Add
                     if (oldReaction) {
@@ -429,13 +545,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     }
                     comment.reactions[emoji] = (comment.reactions[emoji] || 0) + 1;
                     comment.userReactions[user.pseudo] = emoji;
+                    isNewReaction = true;
                 }
             }
             return comment;
         });
 
-        // After transaction, we might want to manually trigger a local update if the subscription doesn't catch it fast enough? 
-        // The onValue subscription in CommentsSheet should handle it.
+        if (isNewReaction && commentAuthor && commentAuthor !== user.pseudo) {
+            sendSystemNotification(commentAuthor, 'reaction', `${user.pseudo} reacted ${emoji} to your comment`, postId);
+        }
     };
 
     /**
@@ -454,11 +572,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             timestamp: Date.now(),
             reactions: {},
             userReactions: {},
-            replyTo: replyTo ? {
-                id: replyTo.id,
-                username: replyTo.author.username,
-                text: replyTo.text
-            } : undefined
+            ...(replyTo ? {
+                replyTo: {
+                    id: replyTo.id,
+                    username: replyTo.author.username,
+                    text: replyTo.text
+                }
+            } : {})
         };
 
         try {
@@ -499,10 +619,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setTrendingCount(0);
     };
 
+    // Pagination functions
+    const fetchMorePosts = async () => {
+        if (feedState.isLoadingMore || !feedState.hasMore) return;
+
+        setFeedState(prev => ({ ...prev, isLoadingMore: true }));
+
+        try {
+            // For now, simulate no more posts
+            // In future implementation, this would use cursor-based pagination
+            setTimeout(() => {
+                setFeedState(prev => ({
+                    ...prev,
+                    hasMore: false,
+                    isLoadingMore: false
+                }));
+            }, 1000);
+        } catch (error) {
+            console.error("Error fetching more posts:", error);
+            setFeedState(prev => ({
+                ...prev,
+                isLoadingMore: false
+            }));
+        }
+    };
+
+    const resetFeed = () => {
+        setFeedState({
+            posts: [],
+            nextCursor: undefined,
+            hasMore: true,
+            isLoadingMore: false
+        });
+        setPosts([]);
+    };
+
     return (
         <AppContext.Provider value={{
             user,
             posts,
+            feedState,
             updateUser,
             checkPseudoAvailability,
             registerUser,
@@ -522,7 +678,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             notifications,
             removeNotification,
             trendingCount,
-            clearTrendingCount
+            clearTrendingCount,
+            uploadFile,
+            fetchMorePosts,
+            resetFeed
         }}>
             {children}
 

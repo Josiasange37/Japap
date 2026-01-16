@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Fragment } from 'react';
 import Layout from '../components/Layout';
 import PostCard from '../components/PostCard';
+import AdUnit from '../components/AdUnit';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Search } from 'lucide-react';
@@ -64,7 +65,12 @@ export default function Trending() {
                 {/* Posts List */}
                 <section className="flex flex-col gap-6 mt-4">
                     {filteredPosts.length > 0 ? (
-                        filteredPosts.map(post => <PostCard key={post.id} post={post} />)
+                        filteredPosts.map((post, index) => (
+                            <Fragment key={post.id}>
+                                <PostCard post={post} />
+                                {(index + 1) % 5 === 0 && <AdUnit slot="TRENDING_FEED_SLOT" />}
+                            </Fragment>
+                        ))
                     ) : (
                         <p className="text-center text-[var(--text-muted)] py-8">{t('trending.empty')}</p>
                     )}
