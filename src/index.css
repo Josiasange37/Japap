@@ -5,8 +5,10 @@
 @theme {
   --font-display: "Archivo", sans-serif;
   --font-sans: "Outfit", sans-serif;
-  --color-brand: #ff0055; /* Gossip Pink */
-  --color-accent: #00f2ff; /* Volt Blue */
+  --color-brand: #ff0055;
+  /* Gossip Pink */
+  --color-accent: #00f2ff;
+  /* Volt Blue */
 }
 
 :root {
@@ -65,10 +67,12 @@ body {
     width: 0px;
     background: transparent;
   }
-  
+
   body {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
 }
 
@@ -86,8 +90,25 @@ body {
 
 /* Animations */
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 .animate-pulse-soft {
@@ -97,6 +118,7 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

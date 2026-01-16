@@ -67,7 +67,7 @@ export default function CreatePost() {
         try {
             const postData = {
                 content: content || '',
-                caption: mediaFile ? content : undefined,
+                caption: mediaFile ? (content || '') : '',
                 type: mediaFile ? type : 'text',
                 timestamp: Date.now(),
                 liked: false,

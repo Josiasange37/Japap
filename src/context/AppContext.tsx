@@ -255,11 +255,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         const newPostRef = push(ref(rtdb, 'posts'));
 
+        // Utility to remove undefined values before sending to Firebase
+        const cleanObject = (obj: any) => {
+            const newObj = { ...obj };
+            Object.keys(newObj).forEach(key => {
+                if (newObj[key] === undefined) {
+                    delete newObj[key];
+                }
+            });
+            return newObj;
+        };
+
         // Check if this is a media post that needs processing
         const isMediaPost = mediaFile && ['image', 'video', 'audio'].includes(newPostData.type);
 
         // Create post with placeholder if media file provided
-        const newPost = {
+        const newPost = cleanObject({
             ...newPostData,
             author,
             timestamp: serverTimestamp(),
@@ -269,7 +280,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             processing: isMediaPost,
             processingProgress: isMediaPost ? 0 : null,
             temporaryContent: isMediaPost ? newPostData.content : null
-        };
+        });
 
         try {
             // Phase 1: Create post immediately

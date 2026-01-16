@@ -47,13 +47,24 @@ export default function Home() {
             {/* Feed */}
             <section className="mt-4 md:mt-0 flex flex-col">
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 px-10 text-center">
-                        <motion.div
-                            animate={{ rotate: 360 }}
-                            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                            className="w-12 h-12 border-4 border-[var(--bg-secondary)] border-t-[var(--brand)] rounded-full mb-6"
-                        />
-                        {t('home.loading')}
+                    <div className="space-y-6">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="bg-[var(--card)] border-b md:border md:rounded-[32px] border-[var(--border)] mb-0 md:mb-6 overflow-hidden relative">
+                                <div className="p-4 flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] animate-pulse" />
+                                    <div className="space-y-2">
+                                        <div className="w-24 h-3 bg-[var(--bg-secondary)] rounded-full animate-pulse" />
+                                        <div className="w-16 h-2 bg-[var(--bg-secondary)] rounded-full animate-pulse opacity-50" />
+                                    </div>
+                                </div>
+                                <div className="px-4 pb-4 space-y-2">
+                                    <div className="w-full h-4 bg-[var(--bg-secondary)] rounded-full animate-pulse" />
+                                    <div className="w-3/4 h-4 bg-[var(--bg-secondary)] rounded-full animate-pulse" />
+                                </div>
+                                <div className="h-[250px] bg-[var(--bg-secondary)] animate-pulse m-4 rounded-2xl" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                            </div>
+                        ))}
                     </div>
                 ) : posts.length > 0 ? (
                     <>

@@ -125,9 +125,24 @@ export default function PostCard({ post }: PostCardProps) {
             className={`bg-[var(--card)] border-b md:border md:rounded-[32px] border-[var(--border)] mb-0 md:mb-6 group transition-all ${isRiskyContent ? 'border-amber-500/20 shadow-inner' : ''}`}
         >
             {isProcessing && (
-                <div className="bg-blue-500/10 px-4 py-1.5 flex items-center gap-2 md:rounded-t-[32px]">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-blue-600">Processing Media...</span>
+                <div className="bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 px-4 py-2 flex items-center justify-between md:rounded-t-[32px] overflow-hidden relative">
+                    <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Processing Scoop...</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-black text-[var(--text-muted)] tracking-tighter">{processingProgress}%</span>
+                        <div className="w-16 h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border)]">
+                            <motion.div
+                                className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${processingProgress}%` }}
+                                transition={{ type: "spring", stiffness: 50 }}
+                            />
+                        </div>
+                    </div>
+                    {/* Animated Shimmer Effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
                 </div>
             )}
 
@@ -235,22 +250,34 @@ export default function PostCard({ post }: PostCardProps) {
                     <div className="space-y-3">
                         <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] relative">
                             {isProcessing ? (
-                                <div className="w-full h-[300px] flex flex-col items-center justify-center">
-                                    <div className="w-16 h-16 border-4 border-[var(--bg-secondary)] border-t-[var(--brand)] rounded-full animate-spin mb-4" />
-                                    <p className="text-sm font-bold text-[var(--text-muted)]">Processing image...</p>
-                                    <div className="w-48 h-2 bg-[var(--border)] rounded-full overflow-hidden mt-2">
-                                        <div
-                                            className="h-full bg-[var(--brand)] transition-all duration-300"
-                                            style={{ width: `${processingProgress}%` }}
-                                        />
+                                <div className="w-full h-[300px] flex flex-col items-center justify-center relative overflow-hidden bg-[var(--bg-secondary)]">
+                                    {/* Skeleton Pulse */}
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--border)] to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+
+                                    <div className="relative z-10 flex flex-col items-center gap-4">
+                                        <div className="relative">
+                                            <div className="w-20 h-20 border-4 border-blue-500/20 rounded-full" />
+                                            <div
+                                                className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"
+                                                style={{ clipPath: `inset(0 0 ${100 - processingProgress}% 0)` }}
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center font-black text-[var(--brand)] text-xs">
+                                                {processingProgress}%
+                                            </div>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-sm font-black uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-[var(--text)] to-[var(--text-muted)]">Uploading High Quality</p>
+                                            <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1 italic">Patienter pour le nouveau japap...</p>
+                                        </div>
                                     </div>
                                 </div>
                             ) : processingError ? (
-                                <div className="w-full h-[300px] flex flex-col items-center justify-center">
-                                    <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
-                                        <div className="w-8 h-8 bg-red-500 rounded-full" />
+                                <div className="w-full h-[300px] flex flex-col items-center justify-center bg-red-500/5 border-2 border-dashed border-red-500/20 rounded-2xl m-4">
+                                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                                        <AlertCircle size={32} className="text-red-500" />
                                     </div>
-                                    <p className="text-sm font-bold text-red-500">Failed to process image</p>
+                                    <p className="text-sm font-black text-red-500 uppercase tracking-widest">Post Failed to Process</p>
+                                    <p className="text-[10px] font-bold text-red-500/60 mt-1">Check your connection and try again</p>
                                 </div>
                             ) : (
                                 <img
