@@ -1,6 +1,6 @@
 import type { Post, UserProfile } from '../types';
 import { ref, set, get, child, push, runTransaction, serverTimestamp, remove } from 'firebase/database';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { rtdb, storage } from '../firebase';
 
 /**
@@ -91,7 +91,11 @@ export const JapapAPI = {
             id: key,
             ...data[key],
             stats: { likes: 0, dislikes: 0, comments: 0, views: 0, ...data[key].stats }
-        })).sort((a, b) => b.timestamp - a.timestamp);
+        })).sort((a, b) => {
+            const timeA = typeof a.timestamp === 'number' ? a.timestamp : 0;
+            const timeB = typeof b.timestamp === 'number' ? b.timestamp : 0;
+            return timeB - timeA;
+        });
     },
 
     async createPost(post: any): Promise<string> {
@@ -245,12 +249,30 @@ export const JapapAPI = {
     },
 
     // Storage
-    async uploadFile(file: File, folder: string = 'media'): Promise<string> {
+    async uploadFile(file: File, folder: string = 'media', onProgress?: (progress: number) => void): Promise<string> {
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
         const sRef = storageRef(storage, `${folder}/${fileName}`);
-        const snapshot = await uploadBytes(sRef, file);
-        return await getDownloadURL(snapshot.ref);
+
+        return new Promise((resolve, reject) => {
+            const uploadTask = uploadBytesResumable(sRef, file);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    if (onProgress) onProgress(progress);
+                },
+                (error) => {
+                    console.error("Upload failed", error);
+                    reject(error);
+                },
+                () => {
+                    getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+                        resolve(downloadURL);
+                    });
+                }
+            );
+        });
     },
 
     async requestNotificationPermission(): Promise<boolean> {

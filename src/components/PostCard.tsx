@@ -125,24 +125,37 @@ export default function PostCard({ post }: PostCardProps) {
             className={`bg-[var(--card)] border-b md:border md:rounded-[32px] border-[var(--border)] mb-0 md:mb-6 group transition-all ${isRiskyContent ? 'border-amber-500/20 shadow-inner' : ''}`}
         >
             {isProcessing && (
-                <div className="bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-pink-500/10 px-4 py-2 flex items-center justify-between md:rounded-t-[32px] overflow-hidden relative">
-                    <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Processing Scoop...</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-[9px] font-black text-[var(--text-muted)] tracking-tighter">{processingProgress}%</span>
-                        <div className="w-16 h-1 bg-[var(--bg-secondary)] rounded-full overflow-hidden border border-[var(--border)]">
+                <div className="bg-[var(--bg-secondary)] border-b border-[var(--border)] px-4 py-2.5 flex items-center justify-between md:rounded-t-[32px] overflow-hidden relative">
+                    <div className="flex items-center gap-3 z-10">
+                        <div className="relative flex items-center justify-center">
                             <motion.div
-                                className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
+                                animate={{ scale: [1, 1.2, 1] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                className="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-[0_0_12px_rgba(59,130,246,0.8)]"
+                            />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">Scoop is uploading...</span>
+                            <span className="text-[9px] font-bold text-[var(--text-muted)] italic leading-none mt-0.5">Patienter pour le nouveau japap...</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4 z-10">
+                        <span className="text-xs font-black text-[var(--text)] tabular-nums">{processingProgress}%</span>
+                        <div className="w-24 h-1.5 bg-[var(--border)] rounded-full overflow-hidden p-[1px]">
+                            <motion.div
+                                className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full"
                                 initial={{ width: 0 }}
                                 animate={{ width: `${processingProgress}%` }}
-                                transition={{ type: "spring", stiffness: 50 }}
+                                transition={{ type: "spring", stiffness: 30, damping: 15 }}
                             />
                         </div>
                     </div>
-                    {/* Animated Shimmer Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                    {/* Animated Glow Background */}
+                    <motion.div
+                        animate={{ x: ['100%', '-100%'] }}
+                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent skew-x-12"
+                    />
                 </div>
             )}
 
@@ -299,22 +312,32 @@ export default function PostCard({ post }: PostCardProps) {
                     <div className="space-y-3">
                         <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
                             {isProcessing ? (
-                                <div className="w-full h-full flex flex-col items-center justify-center">
-                                    <div className="w-16 h-16 border-4 border-gray-700 border-t-[var(--brand)] rounded-full animate-spin mb-4" />
-                                    <p className="text-sm font-bold text-white">Processing video...</p>
-                                    <div className="w-48 h-2 bg-gray-700 rounded-full overflow-hidden mt-2">
-                                        <div
-                                            className="h-full bg-[var(--brand)] transition-all duration-300"
-                                            style={{ width: `${processingProgress}%` }}
-                                        />
+                                <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-zinc-900">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                                    <div className="relative z-10 flex flex-col items-center gap-4">
+                                        <div className="relative">
+                                            <div className="w-20 h-20 border-4 border-white/10 rounded-full" />
+                                            <div
+                                                className="absolute inset-0 border-4 border-[var(--brand)] rounded-full border-t-transparent animate-spin"
+                                                style={{ clipPath: `inset(0 0 ${100 - processingProgress}% 0)` }}
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center font-black text-white text-xs">
+                                                {processingProgress}%
+                                            </div>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-sm font-black uppercase tracking-widest text-white">Encoding Video</p>
+                                            <p className="text-[10px] font-bold text-zinc-500 mt-1 italic">Patienter pour le nouveau japap...</p>
+                                        </div>
                                     </div>
                                 </div>
                             ) : processingError ? (
-                                <div className="w-full h-full flex flex-col items-center justify-center">
-                                    <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-4">
-                                        <div className="w-8 h-8 bg-red-500 rounded-full" />
+                                <div className="w-full h-full flex flex-col items-center justify-center bg-red-500/10 border border-red-500/20 rounded-2xl">
+                                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
+                                        <AlertCircle size={32} className="text-red-500" />
                                     </div>
-                                    <p className="text-sm font-bold text-red-500">Failed to process video</p>
+                                    <p className="text-sm font-black text-red-500 uppercase tracking-widest text-center px-4">Video Processing Failed</p>
+                                    <p className="text-[10px] font-bold text-red-500/60 mt-1">Please try re-uploading</p>
                                 </div>
                             ) : (
                                 <video
@@ -338,22 +361,32 @@ export default function PostCard({ post }: PostCardProps) {
                     <div className="space-y-3">
                         <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl flex flex-col items-center gap-4 border border-[var(--border)]">
                             {isProcessing ? (
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="w-16 h-16 border-4 border-[var(--border)] border-t-[var(--brand)] rounded-full animate-spin" />
-                                    <p className="text-sm font-bold text-[var(--text-muted)]">Processing audio...</p>
-                                    <div className="w-48 h-2 bg-[var(--border)] rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-[var(--brand)] transition-all duration-300"
-                                            style={{ width: `${processingProgress}%` }}
-                                        />
+                                <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-zinc-900/10 dark:bg-zinc-800/10 rounded-xl py-6">
+                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+                                    <div className="relative z-10 flex flex-col items-center gap-4">
+                                        <div className="relative">
+                                            <div className="w-20 h-20 border-4 border-white/10 rounded-full" />
+                                            <div
+                                                className="absolute inset-0 border-4 border-[var(--brand)] rounded-full border-t-transparent animate-spin"
+                                                style={{ clipPath: `inset(0 0 ${100 - processingProgress}% 0)` }}
+                                            />
+                                            <div className="absolute inset-0 flex items-center justify-center font-black text-[var(--brand)] text-xs">
+                                                {processingProgress}%
+                                            </div>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-sm font-black uppercase tracking-widest text-[var(--brand)]">Processing Audio</p>
+                                            <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1 italic">Patienter pour le nouveau japap...</p>
+                                        </div>
                                     </div>
                                 </div>
                             ) : processingError ? (
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center">
-                                        <div className="w-8 h-8 bg-red-500 rounded-full" />
+                                <div className="w-full flex flex-col items-center justify-center bg-red-500/5 border border-dashed border-red-500/20 rounded-2xl p-6">
+                                    <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-3">
+                                        <AlertCircle size={24} className="text-red-500" />
                                     </div>
-                                    <p className="text-sm font-bold text-red-500">Failed to process audio</p>
+                                    <p className="text-xs font-black text-red-500 uppercase tracking-widest">Audio Failed</p>
+                                    <p className="text-[10px] font-bold text-red-500/60 mt-1">Try again later</p>
                                 </div>
                             ) : (
                                 <>
@@ -380,19 +413,19 @@ export default function PostCard({ post }: PostCardProps) {
 
             {/* Reactions Display */}
             {post.reactions && Object.keys(post.reactions).length > 0 && (
-                <div className="px-4 py-2 flex gap-2 flex-wrap items-center justify-start max-w-full overflow-hidden">
+                <div className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar items-center justify-start border-t border-[var(--border)] bg-[var(--bg-secondary)]/30">
                     {Object.entries(post.reactions).map(([emoji, count]) => (
                         <motion.button
                             key={emoji}
-                            whileTap={{ scale: 0.95 }}
+                            whileTap={{ scale: 0.92 }}
                             onClick={() => addReaction(post.id, emoji)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 transition-all shadow-sm ${post.userReaction === emoji
-                                ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-pink-500/20'
-                                : 'bg-[var(--bg-secondary)] border-[var(--border)] hover:border-[var(--text-muted)] hover:bg-[var(--border)]'
+                            className={`px-3 py-1.5 rounded-full text-xs font-black border flex items-center gap-2 transition-all flex-shrink-0 ${post.userReaction === emoji
+                                ? 'bg-[var(--brand)] text-white border-[var(--brand)] shadow-lg shadow-pink-500/30 ring-2 ring-pink-500/20'
+                                : 'bg-[var(--card)] border-[var(--border)] hover:border-[var(--text-muted)] shadow-sm'
                                 }`}
                         >
-                            <span className="text-sm">{emoji}</span>
-                            <span>{count}</span>
+                            <span className="text-sm leading-none">{emoji}</span>
+                            <span className="tabular-nums">{count}</span>
                         </motion.button>
                     ))}
                 </div>

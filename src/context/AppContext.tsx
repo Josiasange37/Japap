@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Post, UserProfile, GossipComment } from '../types';
 import { JapapAPI } from '../services/api';
-import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get } from 'firebase/database';
+import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get, endAt } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
 
@@ -41,7 +41,7 @@ interface AppContextType {
     removeNotification: (id: number) => void;
     trendingCount: number;
     clearTrendingCount: () => void;
-    uploadFile: (file: File, folder?: string) => Promise<string>;
+    uploadFile: (file: File, folder?: string, onProgress?: (progress: number) => void) => Promise<string>;
     fetchMorePosts: () => Promise<void>;
     resetFeed: () => void;
 }
@@ -138,7 +138,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     liked: user?.pseudo ? data[key].users?.[user.pseudo]?.liked : false,
                     disliked: user?.pseudo ? data[key].users?.[user.pseudo]?.disliked : false,
                     userReaction: user?.pseudo ? data[key].users?.[user.pseudo]?.reaction : null
-                })).sort((a, b) => b.timestamp - a.timestamp);
+                })).sort((a, b) => {
+                    const timeA = typeof a.timestamp === 'number' ? a.timestamp : 0;
+                    const timeB = typeof b.timestamp === 'number' ? b.timestamp : 0;
+                    // Sort by timestamp DESC (newest first)
+                    // If timestamps are equal, sort by ID DESC
+                    if (timeB !== timeA) return timeB - timeA;
+                    return b.id.localeCompare(a.id);
+                });
                 setPosts(loadedPosts);
                 setFeedState(prev => ({
                     ...prev,
@@ -315,17 +322,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         originalData: any
     ) => {
         try {
-            // Update processing progress
-            await update(ref(rtdb, `posts/${postId}`), {
-                processingProgress: 10
+            // Upload media with granular progress reporting
+            const mediaUrl = await uploadFile(mediaFile, post.type, async (p) => {
+                // Map storage progress (0-100) to processing progress (0-100)
+                // We'll reserve 0-85% for upload and 85-100% for final processing
+                const refinedProgress = Math.round(p * 0.85);
+                await update(ref(rtdb, `posts/${postId}`), {
+                    processingProgress: refinedProgress
+                });
             });
 
-            // Upload media
-            const mediaUrl = await uploadFile(mediaFile, post.type);
-
-            // Update processing progress
+            // Finalizing
             await update(ref(rtdb, `posts/${postId}`), {
-                processingProgress: 80
+                processingProgress: 95
             });
 
             // Update post with final media URL
@@ -365,7 +374,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const uploadFile = (file: File, folder?: string) => JapapAPI.uploadFile(file, folder);
+    const uploadFile = (file: File, folder?: string, onProgress?: (p: number) => void) =>
+        JapapAPI.uploadFile(file, folder, onProgress);
 
     const likePost = async (id: string) => {
         if (!user?.pseudo) return;
@@ -474,7 +484,67 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const clearTrendingCount = () => setTrendingCount(0);
 
     const fetchMorePosts = async () => {
-        // Simple pagination logic could go here
+        if (feedState.isLoadingMore || !feedState.hasMore || posts.length === 0) return;
+
+        setFeedState(prev => ({ ...prev, isLoadingMore: true }));
+
+        try {
+            // Find the oldest post's timestamp/ID
+            const oldestPost = posts[posts.length - 1];
+            const oldestTime = (oldestPost.timestamp as number) || Date.now();
+
+            // Query for posts older than the oldest one currently loaded
+            const postsRef = ref(rtdb, 'posts');
+            const morePostsQuery = query(
+                postsRef,
+                // Usually keys are chronological, so we can use them for better accuracy if timestamps overlap
+                // But since we want "older than", and RTDB's limitToLast returns the *last* ones in the set,
+                // we order by key and end at the one before the current oldest.
+                limitToLast(11) // 10 more plus the oldest one (overlapping)
+            );
+
+            // Using endAt with ID is more reliable than timestamp which might overlap
+            const fetchQuery = query(postsRef, limitToLast(21), endAt(null, oldestPost.id));
+
+            const snapshot = await get(fetchQuery);
+            const data = snapshot.val();
+
+            if (data) {
+                const newPosts = Object.keys(data)
+                    .filter(key => key !== oldestPost.id) // Filter out the overlapping post
+                    .map(key => ({
+                        id: key,
+                        ...data[key],
+                        stats: { likes: 0, dislikes: 0, comments: 0, views: 0, ...data[key].stats },
+                        liked: user?.pseudo ? data[key].users?.[user.pseudo]?.liked : false,
+                        disliked: user?.pseudo ? data[key].users?.[user.pseudo]?.disliked : false,
+                        userReaction: user?.pseudo ? data[key].users?.[user.pseudo]?.reaction : null
+                    }))
+                    .sort((a, b) => {
+                        const timeA = typeof a.timestamp === 'number' ? a.timestamp : 0;
+                        const timeB = typeof b.timestamp === 'number' ? b.timestamp : 0;
+                        if (timeB !== timeA) return timeB - timeA;
+                        return b.id.localeCompare(a.id);
+                    });
+
+                if (newPosts.length > 0) {
+                    setPosts(prev => [...prev, ...newPosts]);
+                    setFeedState(prev => ({
+                        ...prev,
+                        posts: [...prev.posts, ...newPosts],
+                        hasMore: newPosts.length >= 20
+                    }));
+                } else {
+                    setFeedState(prev => ({ ...prev, hasMore: false }));
+                }
+            } else {
+                setFeedState(prev => ({ ...prev, hasMore: false }));
+            }
+        } catch (error) {
+            console.error("Error fetching more posts:", error);
+        } finally {
+            setFeedState(prev => ({ ...prev, isLoadingMore: false }));
+        }
     };
 
     const resetFeed = () => {
