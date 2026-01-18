@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Post, UserProfile, GossipComment, Toast, PaginatedFeedState, JapapNotification } from '../types';
 import { JapapAPI } from '../services/api';
-import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get, endAt } from 'firebase/database';
+import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get, endAt, orderByKey, DataSnapshot } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
 import { cleanObject } from '../utils/object';
@@ -42,7 +42,13 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<UserProfile | null>(() => {
         const stored = localStorage.getItem('japap_user');
-        return stored ? JSON.parse(stored) : null;
+        try {
+            return stored ? JSON.parse(stored) : null;
+        } catch (e) {
+            console.error("Failed to parse user from localStorage:", e);
+            localStorage.removeItem('japap_user');
+            return null;
+        }
     });
 
     const [posts, setPosts] = useState<Post[]>(() => {
@@ -70,13 +76,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const [notifications, setNotifications] = useState<JapapNotification[]>([]);
 
     const removeToast = useCallback((id: string) => {
-        setToasts(prev => prev.filter(t => t.id !== id));
+        setToasts((prev: Toast[]) => prev.filter((t: Toast) => t.id !== id));
     }, []);
 
     const showToast = useCallback((message: string, type: Toast['type'] = 'success') => {
         const id = Date.now().toString();
         const newToast: Toast = { id, message, type };
-        setToasts(prev => [...prev, newToast]);
+        setToasts((prev: Toast[]) => [...prev, newToast]);
         setTimeout(() => removeToast(id), 3000);
     }, [removeToast]);
 
@@ -113,7 +119,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         verifyUser();
 
         const postsQuery = query(ref(rtdb, 'posts'), limitToLast(20));
-        const unsubscribe = onValue(postsQuery, (snapshot) => {
+        const unsubscribe = onValue(postsQuery, (snapshot: DataSnapshot) => {
             const data = snapshot.val();
             if (data) {
                 const loadedPosts = Object.keys(data).map(key => ({
@@ -137,11 +143,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     if (timeB !== timeA) return timeB - timeA;
                     return b.id.localeCompare(a.id);
                 });
-                setPosts(loadedPosts);
-                setFeedState(prev => ({
+                setPosts((prev: Post[]) => {
+                    const newPosts = [...loadedPosts];
+                    // Merge with existing older posts
+                    const existingIds = new Set(newPosts.map((p: Post) => p.id));
+                    prev.forEach((p: Post) => {
+                        if (!existingIds.has(p.id)) {
+                            newPosts.push(p);
+                        }
+                    });
+                    return newPosts.sort((a: Post, b: Post) => (b.timestamp as number || 0) - (a.timestamp as number || 0));
+                });
+
+                setFeedState((prev: PaginatedFeedState) => ({
                     ...prev,
-                    posts: loadedPosts,
-                    hasMore: loadedPosts.length >= 20
+                    hasMore: loadedPosts.length === 20
                 }));
                 localStorage.setItem('japap_posts_cache', JSON.stringify(loadedPosts));
             } else {
@@ -272,7 +288,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         try {
             // Phase 1: Create post immediately
-            await set(newPostRef, cleanObject(newPost));
+            await set(newPostRef, newPost);
 
             if (isMediaPost) {
                 // Phase 2: Show immediate confirmation and process media in background
@@ -461,7 +477,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const removeNotification = (id: string) => {
         if (!user?.pseudo) return;
         // Optimistic update
-        setNotifications(prev => prev.filter(n => n.id !== id));
+        setNotifications((prev: JapapNotification[]) => prev.filter((n: JapapNotification) => n.id !== id));
         const normalized = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
         // In RTDB we'd need the real key, not the ID if ID is different?
         // Assuming id passed here is the RTDB key.
@@ -485,23 +501,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const fetchMorePosts = async () => {
         if (feedState.isLoadingMore || !feedState.hasMore || posts.length === 0) return;
 
-        setFeedState(prev => ({ ...prev, isLoadingMore: true }));
+        setFeedState((prev: PaginatedFeedState) => ({ ...prev, isLoadingMore: true }));
 
         try {
             // Find the oldest post's timestamp/ID
             const oldestPost = posts[posts.length - 1];
-
-            // Query for posts older than the oldest one currently loaded
             const postsRef = ref(rtdb, 'posts');
 
-            // Using endAt with ID is more reliable than timestamp which might overlap
-            const fetchQuery = query(postsRef, limitToLast(21), endAt(null, oldestPost.id));
+            // Using orderByKey().endAt(key) with limitToLast(21) is the correct way to paginate down
+            const fetchQuery = query(postsRef, orderByKey(), endAt(oldestPost.id), limitToLast(21));
 
             const snapshot = await get(fetchQuery);
             const data = snapshot.val();
 
             if (data) {
-                const newPosts = Object.keys(data)
+                const newPosts: Post[] = Object.keys(data)
                     .filter(key => key !== oldestPost.id) // Filter out the overlapping post
                     .map(key => ({
                         id: key,
@@ -519,22 +533,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     });
 
                 if (newPosts.length > 0) {
-                    setPosts(prev => [...prev, ...newPosts]);
-                    setFeedState(prev => ({
+                    setPosts((prev: Post[]) => [...prev, ...newPosts]);
+                    setFeedState((prev: PaginatedFeedState) => ({
                         ...prev,
                         posts: [...prev.posts, ...newPosts],
-                        hasMore: newPosts.length >= 20
+                        hasMore: Object.keys(data).length === 21
                     }));
                 } else {
-                    setFeedState(prev => ({ ...prev, hasMore: false }));
+                    setFeedState((prev: PaginatedFeedState) => ({ ...prev, hasMore: false }));
                 }
             } else {
-                setFeedState(prev => ({ ...prev, hasMore: false }));
+                setFeedState((prev: PaginatedFeedState) => ({ ...prev, hasMore: false }));
             }
         } catch (error) {
             console.error("Error fetching more posts:", error);
         } finally {
-            setFeedState(prev => ({ ...prev, isLoadingMore: false }));
+            setFeedState((prev: PaginatedFeedState) => ({ ...prev, isLoadingMore: false }));
         }
     };
 

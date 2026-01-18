@@ -2,14 +2,24 @@
  * Removes all properties with undefined values from an object.
  * Useful for preparing payloads for Firebase RTDB which throws on undefined.
  */
-export const cleanObject = <T extends Record<string, any>>(obj: T): T => {
-    const newObj = { ...obj };
+export const cleanObject = <T>(obj: T): T => {
+    if (obj === null || typeof obj !== 'object') return obj;
+
+    if (Array.isArray(obj)) {
+        return obj.map(item => cleanObject(item)) as unknown as T;
+    }
+
+    const newObj = { ...obj } as Record<string, unknown>;
     Object.keys(newObj).forEach(key => {
-        if (newObj[key] === undefined) {
+        const value = newObj[key];
+        if (value === undefined) {
             delete newObj[key];
-        } else if (newObj[key] !== null && typeof newObj[key] === 'object' && !Array.isArray(newObj[key])) {
-            newObj[key] = cleanObject(newObj[key]);
+        } else if (value !== null && typeof value === 'object') {
+            // Avoid deep cleaning Firebase special objects (e.g., serverTimestamp())
+            if (Object.keys(value).length > 0) {
+                newObj[key] = cleanObject(value);
+            }
         }
     });
-    return newObj;
+    return (newObj as unknown) as T;
 };
