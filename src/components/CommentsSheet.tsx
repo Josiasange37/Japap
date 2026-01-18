@@ -90,6 +90,7 @@ export default function CommentsSheet() {
             } else {
                 await addComment(postId, text.trim(), undefined);
             }
+            setText('');
             setReplyingTo(null);
         } catch (error) {
             console.error("Failed to submit comment:", error);

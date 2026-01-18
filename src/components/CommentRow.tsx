@@ -155,7 +155,7 @@ export default function CommentRow({
                 </div>
             </motion.div>
 
-            <div className="absolute top-0 right-0 z-[100]">
+            <div className="absolute left-1/2 top-0 -translate-x-1/2 z-[100]">
                 <ReactionPicker
                     visible={activeReactionId === comment.id}
                     position="relative"

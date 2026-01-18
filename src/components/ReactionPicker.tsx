@@ -28,10 +28,10 @@ export default function ReactionPicker({ visible, onSelect, onClose, position = 
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.8, y: 10 }}
                         className={cn(
-                            "bg-white dark:bg-zinc-900 rounded-full shadow-2xl border border-zinc-200 dark:border-zinc-800 p-1.5 flex gap-1 z-[250]",
+                            "bg-white dark:bg-zinc-900 rounded-full shadow-2xl border border-zinc-200 dark:border-zinc-800 p-1.5 flex gap-1 z-[250] whitespace-nowrap",
                             position === 'relative'
-                                ? "absolute top-0 right-0 md:right-auto md:left-0 -translate-y-full mb-2"
-                                : "absolute bottom-16 right-0 md:right-4"
+                                ? "absolute bottom-full left-1/2 -translate-x-1/2 mb-2"
+                                : "absolute bottom-16 right-0"
                         )}
                     >
                         {REACTIONS.map((emoji) => (
