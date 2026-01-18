@@ -40,6 +40,7 @@ export default function CommentsSheet() {
                 if (!isMounted) return;
                 const data = snapshot.val();
                 if (data) {
+                    console.log("CommentsSheet received data:", Object.keys(data).length, "items");
                     const loadedComments = Object.values(data) as GossipComment[];
 
                     if (user?.pseudo) {
@@ -50,7 +51,11 @@ export default function CommentsSheet() {
                         });
                     }
 
-                    loadedComments.sort((a, b) => a.timestamp - b.timestamp);
+                    loadedComments.sort((a, b) => {
+                        const timeA = typeof a.timestamp === 'number' ? a.timestamp : 0;
+                        const timeB = typeof b.timestamp === 'number' ? b.timestamp : 0;
+                        return timeA - timeB;
+                    });
                     setComments(loadedComments);
                 } else {
                     setComments([]);
@@ -85,11 +90,10 @@ export default function CommentsSheet() {
             } else {
                 await addComment(postId, text.trim(), undefined);
             }
-            console.log("Comment submitted successfully");
-            setText('');
             setReplyingTo(null);
         } catch (error) {
             console.error("Failed to submit comment:", error);
+            // Don't clear text if failed
         }
     };
 

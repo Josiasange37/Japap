@@ -443,8 +443,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 });
             }
             showToast("Comment posted!", "success");
-        } catch {
+        } catch (error) {
+            console.error("AppContext addComment failed:", error);
             showToast("Failed to post comment", "error");
+            throw error; // Rethrow so UI knows it failed
         }
     };
 
