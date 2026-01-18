@@ -313,7 +313,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             // Processing state for media posts
             processing: isMediaPost,
             processingProgress: isMediaPost ? 0 : undefined,
-            temporaryContent: tempContent
+            // IMPORTANT: temporaryContent is local-only, do not send to server
         });
 
         // Optimistic update for local UI
@@ -333,9 +333,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         setPosts(prev => [optimisticPost, ...prev]);
 
+        console.log(`[Phase 1] Creating post ${postId} on server...`);
+
         try {
+            // Implementation of a safety timeout for the server creation
+            const creationPromise = set(newPostRef, newPost);
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Post creation timed out after 10s")), 10000)
+            );
+
             // Phase 1: Create post on server
-            await set(newPostRef, newPost);
+            await Promise.race([creationPromise, timeoutPromise]);
+            console.log(`[Phase 1] Post ${postId} successfully created on server.`);
 
             if (isMediaPost) {
                 // Phase 2: Show immediate confirmation and process media in background

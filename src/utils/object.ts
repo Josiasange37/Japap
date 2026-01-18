@@ -15,7 +15,11 @@ export const cleanObject = <T>(obj: T): T => {
         if (value === undefined) {
             delete newObj[key];
         } else if (value !== null && typeof value === 'object') {
-            // Avoid deep cleaning Firebase special objects (e.g., serverTimestamp())
+            // Avoid cleaning Firebase special objects (e.g., serverTimestamp())
+            // These typically contain a '.sv' key
+            if (Object.keys(value).includes('.sv')) {
+                return;
+            }
             if (Object.keys(value).length > 0) {
                 newObj[key] = cleanObject(value);
             }

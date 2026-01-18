@@ -99,7 +99,9 @@ export default function CreatePost() {
                 disliked: false
             };
 
-            await addPost(postData, isAnonymous, mediaFile);
+            console.log("Creating post with data:", postData, "Anonymous:", isAnonymous, "Media:", !!mediaFile);
+            const createdPostId = await addPost(postData, isAnonymous, mediaFile);
+            console.log("Post creation call finished. Received ID:", createdPostId);
             navigate('/');
 
         } catch (error) {
