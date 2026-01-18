@@ -54,11 +54,8 @@ export default function CreatePost() {
             setMediaFile(file);
             setType(fileType);
 
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setMediaPreview(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+            const blobUrl = URL.createObjectURL(file);
+            setMediaPreview(blobUrl);
         }
     };
 

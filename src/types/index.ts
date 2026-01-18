@@ -35,6 +35,7 @@ export interface Post {
     processing?: boolean;
     processingProgress?: number;
     processingError?: boolean;
+    temporaryContent?: string | null;
 }
 
 export interface GossipComment {

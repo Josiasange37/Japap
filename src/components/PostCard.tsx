@@ -264,7 +264,15 @@ export default function PostCard({ post }: PostCardProps) {
                         <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] relative">
                             {isProcessing ? (
                                 <div className="w-full h-[300px] flex flex-col items-center justify-center relative overflow-hidden bg-[var(--bg-secondary)]">
-                                    {/* Skeleton Pulse */}
+                                    {/* Show temporary preview if available */}
+                                    {post.temporaryContent && (
+                                        <img
+                                            src={post.temporaryContent}
+                                            alt="Preview"
+                                            className="absolute inset-0 w-full h-full object-cover blur-[2px] opacity-40"
+                                        />
+                                    )}
+                                    {/* Skeleton Shimmer */}
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--border)] to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
 
                                     <div className="relative z-10 flex flex-col items-center gap-4">
@@ -313,6 +321,12 @@ export default function PostCard({ post }: PostCardProps) {
                         <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
                             {isProcessing ? (
                                 <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-zinc-900">
+                                    {/* Show temporary preview if available */}
+                                    {post.temporaryContent && (
+                                        <div className="absolute inset-0 w-full h-full opacity-30 blur-sm">
+                                            <video src={post.temporaryContent} className="w-full h-full object-cover" />
+                                        </div>
+                                    )}
                                     <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
                                     <div className="relative z-10 flex flex-col items-center gap-4">
                                         <div className="relative">

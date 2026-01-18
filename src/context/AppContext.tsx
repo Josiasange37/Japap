@@ -269,11 +269,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             : { id: user?.pseudo || 'anon', username: user?.pseudo || 'Anonymous', avatar: user?.avatar || null };
 
         const newPostRef = push(ref(rtdb, 'posts'));
+        const postId = newPostRef.key!;
 
         // Check if this is a media post that needs processing
-        const isMediaPost = mediaFile && ['image', 'video', 'audio'].includes(newPostData.type);
+        const isMediaPost = !!(mediaFile && ['image', 'video', 'audio'].includes(newPostData.type));
 
-        // Create post with placeholder if media file provided
+        // For media posts, if content is a blob URL from the UI, we'll use it as temporaryContent
+        const tempContent = isMediaPost ? newPostData.content : null;
+
+        // Create post object for the server
         const newPost = cleanObject({
             ...newPostData,
             author,
@@ -282,12 +286,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             reactions: {},
             // Processing state for media posts
             processing: isMediaPost,
-            processingProgress: isMediaPost ? 0 : null,
-            temporaryContent: isMediaPost ? newPostData.content : null
+            processingProgress: isMediaPost ? 0 : undefined,
+            temporaryContent: tempContent
         });
 
+        // Optimistic update for local UI
+        const optimisticPost: Post = {
+            id: postId,
+            ...newPostData,
+            author,
+            timestamp: Date.now(),
+            stats: { likes: 0, dislikes: 0, comments: 0, views: 0 },
+            processing: isMediaPost,
+            processingProgress: isMediaPost ? 0 : undefined,
+            temporaryContent: tempContent,
+            liked: false,
+            disliked: false
+        };
+
+        setPosts(prev => [optimisticPost, ...prev]);
+
         try {
-            // Phase 1: Create post immediately
+            // Phase 1: Create post on server
             await set(newPostRef, newPost);
 
             if (isMediaPost) {
@@ -296,16 +316,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
                 // Start background processing
                 if (mediaFile) {
-                    processMediaInBackground(newPostRef.key!, newPost as unknown as Post, mediaFile);
+                    processMediaInBackground(postId, optimisticPost, mediaFile);
                 }
             } else {
                 showToast("Scoop posted successfully!", "success");
             }
 
-            return newPostRef.key;
+            return postId;
         } catch (error) {
             console.error("Error creating post:", error);
             showToast("Failed to post scoop.", "error");
+            // Remove optimistic post if failed
+            setPosts(prev => prev.filter(p => p.id !== postId));
             throw error;
         }
     };

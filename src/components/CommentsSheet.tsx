@@ -84,17 +84,21 @@ export default function CommentsSheet() {
             return;
         }
 
+        const commentText = text.trim();
+        setText('');
+        setReplyingTo(null);
+
         try {
             if (replyingTo) {
-                await addComment(postId, text.trim(), replyingTo);
+                await addComment(postId, commentText, replyingTo);
             } else {
-                await addComment(postId, text.trim(), undefined);
+                await addComment(postId, commentText, undefined);
             }
-            setText('');
-            setReplyingTo(null);
         } catch (error) {
             console.error("Failed to submit comment:", error);
-            // Don't clear text if failed
+            // Restore text if failed
+            setText(commentText);
+            if (replyingTo) setReplyingTo(replyingTo);
         }
     };
 
