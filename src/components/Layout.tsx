@@ -79,45 +79,67 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
                 </nav>
 
-                <div className="mt-auto pt-8 border-t border-[var(--border)] space-y-6">
-                    {/* Legal Links */}
-                    <div className="px-4 flex flex-wrap gap-x-4 gap-y-1">
-                        <Link to="/privacy" className="text-[10px] font-black uppercase text-[var(--text-muted)] hover:text-[var(--brand)] transition-colors">Privacy</Link>
-                        <Link to="/guidelines" className="text-[10px] font-black uppercase text-[var(--text-muted)] hover:text-[var(--brand)] transition-colors">Guidelines</Link>
+                {/* About Section for SEO/AdSense */}
+                <div className="mt-8 px-4 py-6 bg-[var(--bg-secondary)] rounded-3xl border border-[var(--border)]">
+                    <h3 className="text-[10px] font-black uppercase text-[var(--brand)] tracking-[0.2em] mb-3">About Japap</h3>
+                    <p className="text-[11px] leading-relaxed font-medium text-[var(--text-muted)] italic">
+                        Japap is the heartbeat of our community—a safe, verified platform for authentic stories, local gossip, and real connections. We prioritize privacy and positivity, ensuring every "japap" is shared in a space built for trust.
+                    </p>
+                    <div className="mt-4 flex flex-col gap-2">
+                        <div className="flex items-center gap-2 text-[9px] font-black uppercase text-[var(--text)]">
+                            <ShieldCheck size={12} className="text-emerald-500" /> 100% Privacy Focused
+                        </div>
+                        <div className="flex items-center gap-2 text-[9px] font-black uppercase text-[var(--text)]">
+                            <Globe size={12} className="text-blue-500" /> Local & Global Stories
+                        </div>
                     </div>
+                </div>
 
-                    {/* Desktop Controls (Theme & Language Switchers) */}
-                    <div className="space-y-3">
-                        {/* Theme Switcher */}
-                        <div className="flex bg-[var(--bg-secondary)] p-1 rounded-2xl border border-[var(--border)]">
-                            <button
-                                onClick={() => theme !== 'light' && toggleTheme()}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'text-zinc-500'}`}
-                            >
-                                <Sun size={14} /> CLAIR
-                            </button>
-                            <button
-                                onClick={() => theme !== 'dark' && toggleTheme()}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black transition-all ${theme === 'dark' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
-                            >
-                                <Moon size={14} /> SOMBRE
-                            </button>
+                <div className="mt-auto pt-8 border-t border-[var(--border)] space-y-6">
+                    <div className="flex flex-col gap-4">
+                        {/* Desktop Controls (Theme & Language Switchers) */}
+                        <div className="px-4 space-y-3">
+                            {/* Theme Switcher */}
+                            <div className="flex bg-[var(--bg-secondary)] p-1 rounded-2xl border border-[var(--border)]">
+                                <button
+                                    onClick={() => theme !== 'light' && toggleTheme()}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black transition-all ${theme === 'light' ? 'bg-white text-black shadow-sm' : 'text-zinc-500'}`}
+                                >
+                                    <Sun size={14} /> CLAIR
+                                </button>
+                                <button
+                                    onClick={() => theme !== 'dark' && toggleTheme()}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black transition-all ${theme === 'dark' ? 'bg-zinc-800 text-white shadow-sm' : 'text-zinc-500'}`}
+                                >
+                                    <Moon size={14} /> SOMBRE
+                                </button>
+                            </div>
+
+                            {/* Language Switcher */}
+                            <div className="flex bg-[var(--bg-secondary)] p-1 rounded-2xl border border-[var(--border)]">
+                                <button
+                                    onClick={() => setLanguage('fr')}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black transition-all ${language === 'fr' ? 'bg-white text-black shadow-sm' : 'text-zinc-500'}`}
+                                >
+                                    <Globe size={14} /> FRANÇAIS
+                                </button>
+                                <button
+                                    onClick={() => setLanguage('en')}
+                                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black transition-all ${language === 'en' ? 'bg-white text-black shadow-sm' : 'text-zinc-500'}`}
+                                >
+                                    <Globe size={14} /> ENGLISH
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Language Switcher */}
-                        <div className="flex bg-[var(--bg-secondary)] p-1 rounded-2xl border border-[var(--border)]">
-                            <button
-                                onClick={() => setLanguage('fr')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black transition-all ${language === 'fr' ? 'bg-white text-black shadow-sm' : 'text-zinc-500'}`}
-                            >
-                                <Globe size={14} /> FRANÇAIS
-                            </button>
-                            <button
-                                onClick={() => setLanguage('en')}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black transition-all ${language === 'en' ? 'bg-white text-black shadow-sm' : 'text-zinc-500'}`}
-                            >
-                                <Globe size={14} /> ENGLISH
-                            </button>
+                        <div className="px-4 flex flex-wrap gap-x-4 gap-y-2">
+                            <Link to="/privacy" className="text-[10px] font-black uppercase text-[var(--text-muted)] hover:text-[var(--brand)] transition-colors">Privacy Policy</Link>
+                            <Link to="/guidelines" className="text-[10px] font-black uppercase text-[var(--text-muted)] hover:text-[var(--brand)] transition-colors">Community Guidelines</Link>
+                        </div>
+                        <div className="px-4 pb-4">
+                            <p className="text-[9px] font-bold text-[var(--text-muted)] leading-relaxed">
+                                © 2026 Japap. Empowering voices through authentic, safe, and community-driven storytelling. Built for the heartbeat of the streets.
+                            </p>
                         </div>
                     </div>
 

@@ -44,8 +44,25 @@ export default function Home() {
         <Layout>
             {/* Category Filter Removed */}
 
+            {/* Welcome & SEO Section */}
+            <div className="mb-8 px-4 md:px-0">
+                <div className="relative p-8 rounded-[32px] bg-gradient-to-br from-[var(--brand)] to-purple-600 text-white overflow-hidden shadow-2xl shadow-pink-500/20">
+                    <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+                    <div className="relative z-10 max-w-lg">
+                        <h1 className="text-3xl font-black italic tracking-tighter mb-4 leading-none">Welcome to Japap 🫖</h1>
+                        <p className="text-sm font-bold opacity-90 leading-relaxed mb-6">
+                            Join the ultimate community for authentic stories and local gossip. Japap is where trust meets transparency—explore what's happening in your neighborhood, share your experiences anonymously, and stay connected with a verified community of storytellers.
+                        </p>
+                        <div className="flex gap-4">
+                            <div className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-sm">Trending Now</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-3 py-1.5 rounded-full backdrop-blur-sm">Verified Gossip</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Feed */}
-            <section className="mt-4 md:mt-0 flex flex-col">
+            <section className="flex flex-col">
                 {isLoading ? (
                     <div className="space-y-6">
                         {[1, 2, 3].map(i => (
