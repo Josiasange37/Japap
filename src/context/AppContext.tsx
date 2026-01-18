@@ -302,135 +302,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const contentForCategory = newPostData.caption || newPostData.content;
         const suggestedCat = suggestCategory(contentForCategory)?.id || 'general';
 
-        // Create post object for the server
-        const newPost = cleanObject({
-            ...newPostData,
-            category: newPostData.category || suggestedCat,
-            author,
-            timestamp: serverTimestamp(),
-            stats: { likes: 0, dislikes: 0, comments: 0, views: 0 },
-            reactions: {},
-            // Processing state for media posts
-            processing: isMediaPost,
-            processingProgress: isMediaPost ? 0 : undefined,
-            // IMPORTANT: temporaryContent is local-only, do not send to server
-        });
-
-        // Optimistic update for local UI
-        const optimisticPost: Post = {
-            id: postId,
-            ...newPostData,
-            author,
-            timestamp: Date.now(),
-            stats: { likes: 0, dislikes: 0, comments: 0, views: 0 },
-            processing: isMediaPost,
-            processingProgress: isMediaPost ? 0 : undefined,
-            temporaryContent: tempContent,
-            category: newPostData.category || suggestedCat,
-            liked: false,
-            disliked: false
-        };
-
-        setPosts(prev => [optimisticPost, ...prev]);
-
-        console.log(`[Phase 1] Creating post ${postId} on server...`);
+        let finalContent = newPostData.content;
 
         try {
+            if (isMediaPost && mediaFile) {
+                console.log("[Phase 1] Uploading media directly...");
+                showToast("Uploading your scoop...", "info");
+                finalContent = await uploadFile(mediaFile, newPostData.type);
+                console.log("[Phase 1] Media upload complete:", finalContent);
+            }
+
+            // Create post object for the server
+            const newPost = cleanObject({
+                ...newPostData,
+                content: finalContent,
+                category: newPostData.category || suggestedCat,
+                author,
+                timestamp: serverTimestamp(),
+                stats: { likes: 0, dislikes: 0, comments: 0, views: 0 },
+                reactions: {},
+                // Removed background processing states
+            });
+
+            console.log(`[Phase 2] Creating post on server...`);
+
             // Implementation of a safety timeout for the server creation
             const creationPromise = set(newPostRef, newPost);
             const timeoutPromise = new Promise((_, reject) =>
                 setTimeout(() => reject(new Error("Post creation timed out after 10s")), 10000)
             );
 
-            // Phase 1: Create post on server
+            // Phase 2: Create post on server
             await Promise.race([creationPromise, timeoutPromise]);
-            console.log(`[Phase 1] Post ${postId} successfully created on server.`);
+            console.log(`[Phase 2] Post ${postId} successfully created on server.`);
 
-            if (isMediaPost) {
-                // Phase 2: Show immediate confirmation and process media in background
-                showToast("Your post is being uploaded and will appear shortly!", "success");
-
-                // Start background processing
-                if (mediaFile) {
-                    processMediaInBackground(postId, optimisticPost, mediaFile);
-                }
-            } else {
-                showToast("Scoop posted successfully!", "success");
-            }
-
+            showToast("Scoop posted successfully! 🎉", "success");
             return postId;
+
         } catch (error) {
             console.error("Error creating post:", error);
             showToast("Failed to post scoop.", "error");
-            // Remove optimistic post if failed
-            setPosts(prev => prev.filter(p => p.id !== postId));
             throw error;
         }
     };
 
-    // Background media processing
-    const processMediaInBackground = async (
-        postId: string,
-        post: Post,
-        mediaFile: File
-    ) => {
-        try {
-            // Upload media with granular progress reporting
-            const mediaUrl = await uploadFile(mediaFile, post.type, (p) => {
-                // Map storage progress (0-100) to processing progress (0-100)
-                // We'll reserve 0-85% for upload and 85-100% for final processing
-                const refinedProgress = Math.round(p * 0.85);
-                // Non-blocking update to RTDB to avoid throttling the upload
-                update(ref(rtdb, `posts/${postId}`), {
-                    processingProgress: refinedProgress
-                }).catch(e => console.error("Progress update failed:", e));
-            });
 
-            // Finalizing
-            await update(ref(rtdb, `posts/${postId}`), {
-                processingProgress: 95
-            });
-
-            // Update post with final media URL
-            await update(ref(rtdb, `posts/${postId}`), {
-                content: mediaUrl,
-                processing: false,
-                processingProgress: 100
-            });
-
-            // Phase 3: Notify user that post is live
-            showToast("Your post is now live! 🎉", "success");
-
-            // Send notification to current user
-            if (user?.pseudo) {
-                const normalizedPseudo = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
-                const notifRef = push(ref(rtdb, `notifications/${normalizedPseudo}`));
-                await set(notifRef, {
-                    type: 'post_live',
-                    title: 'Your Post is Live!',
-                    message: 'Your media post has been successfully uploaded and is now visible to everyone.',
-                    postId,
-                    timestamp: serverTimestamp(),
-                    read: false
-                });
-            }
-
-        } catch (error) {
-            console.error(`Error processing media for post ${postId}:`, error);
-
-            // Mark processing as failed
-            try {
-                await update(ref(rtdb, `posts/${postId}`), {
-                    processing: false,
-                    processingError: true
-                });
-            } catch (updateError) {
-                console.error("Failed to set processing error state:", updateError);
-            }
-
-            showToast("Failed to process media. Your post may not display correctly.", "error");
-        }
-    };
 
     const uploadFile = (file: File, folder?: string, onProgress?: (p: number) => void) =>
         JapapAPI.uploadFile(file, folder, onProgress);

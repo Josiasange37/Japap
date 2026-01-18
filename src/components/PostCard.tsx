@@ -28,7 +28,8 @@ interface PostCardProps {
     post: Post;
 }
 
-export default function PostCard({ post }: PostCardProps) {
+// Simplified PostCard removing processing overlays
+const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     const { likePost, dislikePost, setActiveCommentsPostId, showToast, deletePost, user, addReaction } = useApp();
     const { t } = useLanguage();
     const [isLiked, setIsLiked] = useState(post.liked);
@@ -39,16 +40,9 @@ export default function PostCard({ post }: PostCardProps) {
     const [isReshared, setIsReshared] = useState(false);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
 
-
-
     const isRiskyContent = post.content.toLowerCase().includes('leak') ||
         post.content.toLowerCase().includes('scandal') ||
         post.content.length > 500;
-
-    // Check if post is processing media
-    const isProcessing = (post as Post & { processing?: boolean; processingProgress?: number; processingError?: boolean }).processing || false;
-    const processingProgress = (post as Post & { processing?: boolean; processingProgress?: number; processingError?: boolean }).processingProgress || 0;
-    const processingError = (post as Post & { processing?: boolean; processingProgress?: number; processingError?: boolean }).processingError || false;
 
     // Sync local state with real data when it changes
     React.useEffect(() => {
@@ -124,49 +118,7 @@ export default function PostCard({ post }: PostCardProps) {
             animate={{ opacity: 1, y: 0 }}
             className={`bg-[var(--card)] border-b md:border md:rounded-[32px] border-[var(--border)] mb-0 md:mb-6 group transition-all ${isRiskyContent ? 'border-amber-500/20 shadow-inner' : ''}`}
         >
-            {isProcessing && (
-                <div className="bg-[var(--bg-secondary)] border-b border-[var(--border)] px-4 py-2.5 flex items-center justify-between md:rounded-t-[32px] overflow-hidden relative">
-                    <div className="flex items-center gap-3 z-10">
-                        <div className="relative flex items-center justify-center">
-                            <motion.div
-                                animate={{ scale: [1, 1.2, 1] }}
-                                transition={{ repeat: Infinity, duration: 2 }}
-                                className="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-[0_0_12px_rgba(59,130,246,0.8)]"
-                            />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">Scoop is uploading...</span>
-                            <span className="text-[9px] font-bold text-[var(--text-muted)] italic leading-none mt-0.5">Patienter pour le nouveau japap...</span>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-4 z-10">
-                        <span className="text-xs font-black text-[var(--text)] tabular-nums">{processingProgress}%</span>
-                        <div className="w-24 h-1.5 bg-[var(--border)] rounded-full overflow-hidden p-[1px]">
-                            <motion.div
-                                className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${processingProgress}%` }}
-                                transition={{ type: "spring", stiffness: 30, damping: 15 }}
-                            />
-                        </div>
-                    </div>
-                    {/* Animated Glow Background */}
-                    <motion.div
-                        animate={{ x: ['100%', '-100%'] }}
-                        transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/5 to-transparent skew-x-12"
-                    />
-                </div>
-            )}
-
-            {processingError && (
-                <div className="bg-red-500/10 px-4 py-1.5 flex items-center gap-2 md:rounded-t-[32px]">
-                    <AlertCircle size={14} className="text-red-500" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-red-600">Processing Failed</span>
-                </div>
-            )}
-
-            {isRiskyContent && !isProcessing && (
+            {isRiskyContent && (
                 <div className="bg-amber-500/10 px-4 py-1.5 flex items-center gap-2 md:rounded-t-[32px]">
                     <AlertCircle size={14} className="text-amber-500" />
                     <span className="text-[9px] font-black uppercase tracking-widest text-amber-600">Sensitive Content - Ads Offline</span>
@@ -262,34 +214,11 @@ export default function PostCard({ post }: PostCardProps) {
                 {post.type === 'image' && (
                     <div className="space-y-3">
                         <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] relative">
-                            {isProcessing ? (
-                                <div className="w-full relative overflow-hidden bg-[var(--bg-secondary)]">
-                                    {/* Show temporary preview clearly if available */}
-                                    {post.temporaryContent ? (
-                                        <img
-                                            src={post.temporaryContent}
-                                            alt="Preview"
-                                            className="w-full h-auto max-h-[500px] object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-[300px] bg-[var(--border)] animate-pulse" />
-                                    )}
-                                </div>
-                            ) : processingError ? (
-                                <div className="w-full h-[300px] flex flex-col items-center justify-center bg-red-500/5 border-2 border-dashed border-red-500/20 rounded-2xl m-4">
-                                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                                        <AlertCircle size={32} className="text-red-500" />
-                                    </div>
-                                    <p className="text-sm font-black text-red-500 uppercase tracking-widest">Post Failed to Process</p>
-                                    <p className="text-[10px] font-bold text-red-500/60 mt-1">Check your connection and try again</p>
-                                </div>
-                            ) : (
-                                <img
-                                    src={post.content}
-                                    alt="Gossip Media"
-                                    className="w-full h-auto max-h-[500px] object-cover"
-                                />
-                            )}
+                            <img
+                                src={post.content}
+                                alt="Gossip Media"
+                                className="w-full h-auto max-h-[500px] object-cover"
+                            />
                         </div>
                         {post.caption && (
                             <p className="text-[15px] font-medium text-[var(--text-muted)] italic">
@@ -302,35 +231,16 @@ export default function PostCard({ post }: PostCardProps) {
                 {post.type === 'video' && (
                     <div className="space-y-3">
                         <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
-                            {isProcessing ? (
-                                <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-zinc-900">
-                                    {/* Show temporary preview clearly if available */}
-                                    {post.temporaryContent ? (
-                                        <video src={post.temporaryContent} className="w-full h-full object-cover" autoPlay muted loop />
-                                    ) : (
-                                        <div className="w-full h-full bg-zinc-800 animate-pulse" />
-                                    )}
-                                </div>
-                            ) : processingError ? (
-                                <div className="w-full h-full flex flex-col items-center justify-center bg-red-500/10 border border-red-500/20 rounded-2xl">
-                                    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                                        <AlertCircle size={32} className="text-red-500" />
-                                    </div>
-                                    <p className="text-sm font-black text-red-500 uppercase tracking-widest text-center px-4">Video Processing Failed</p>
-                                    <p className="text-[10px] font-bold text-red-500/60 mt-1">Please try re-uploading</p>
-                                </div>
-                            ) : (
-                                <video
-                                    src={post.content}
-                                    controls
-                                    preload="metadata"
-                                    className="w-full h-full object-contain"
-                                    poster={post.author.avatar || undefined}
-                                />
-                            )}
+                            <video
+                                src={post.content}
+                                className="w-full h-full object-cover"
+                                controls
+                                preload="metadata"
+                                playsInline
+                            />
                         </div>
                         {post.caption && (
-                            <p className="text-[15px] font-medium text-[var(--text-muted)] italic">
+                            <p className="text-[15px] font-medium text-[var(--text-muted)] italic text-center">
                                 "{post.caption}"
                             </p>
                         )}
@@ -340,38 +250,15 @@ export default function PostCard({ post }: PostCardProps) {
                 {post.type === 'audio' && (
                     <div className="space-y-3">
                         <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl flex flex-col items-center gap-4 border border-[var(--border)]">
-                            {isProcessing ? (
-                                <>
-                                    <div className="w-16 h-16 bg-[var(--brand)]/20 rounded-full flex items-center justify-center text-[var(--brand)] animate-pulse">
-                                        <Volume2 size={32} />
-                                    </div>
-                                    <audio
-                                        src={post.temporaryContent || ''}
-                                        controls
-                                        className="w-full h-10 opacity-50"
-                                    />
-                                </>
-                            ) : processingError ? (
-                                <div className="w-full flex flex-col items-center justify-center bg-red-500/5 border border-dashed border-red-500/20 rounded-2xl p-6">
-                                    <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-3">
-                                        <AlertCircle size={24} className="text-red-500" />
-                                    </div>
-                                    <p className="text-xs font-black text-red-500 uppercase tracking-widest">Audio Failed</p>
-                                    <p className="text-[10px] font-bold text-red-500/60 mt-1">Try again later</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="w-16 h-16 bg-[var(--brand)] rounded-full flex items-center justify-center text-white">
-                                        <Volume2 size={32} />
-                                    </div>
-                                    <audio
-                                        src={post.content}
-                                        controls
-                                        preload="metadata"
-                                        className="w-full h-10"
-                                    />
-                                </>
-                            )}
+                            <div className="w-16 h-16 bg-[var(--brand)] rounded-full flex items-center justify-center text-white">
+                                <Volume2 size={32} />
+                            </div>
+                            <audio
+                                src={post.content}
+                                controls
+                                preload="metadata"
+                                className="w-full h-10"
+                            />
                         </div>
                         {post.caption && (
                             <p className="text-[15px] font-medium text-[var(--text-muted)] italic text-center">
