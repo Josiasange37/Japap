@@ -283,7 +283,7 @@ export const JapapAPI = {
                 () => {
                     getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
                         resolve(downloadURL);
-                    });
+                    }).catch(reject);
                 }
             );
         });

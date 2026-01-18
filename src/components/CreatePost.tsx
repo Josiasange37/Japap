@@ -91,7 +91,7 @@ export default function CreatePost() {
 
         try {
             const postData = {
-                content: content || '',
+                content: mediaPreview || content || '', // Use mediaPreview if available for optimistic UI
                 caption: mediaFile ? (content || '') : '',
                 type: mediaFile ? type : 'text',
                 timestamp: Date.now(),

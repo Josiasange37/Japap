@@ -367,13 +367,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ) => {
         try {
             // Upload media with granular progress reporting
-            const mediaUrl = await uploadFile(mediaFile, post.type, async (p) => {
+            const mediaUrl = await uploadFile(mediaFile, post.type, (p) => {
                 // Map storage progress (0-100) to processing progress (0-100)
                 // We'll reserve 0-85% for upload and 85-100% for final processing
                 const refinedProgress = Math.round(p * 0.85);
-                await update(ref(rtdb, `posts/${postId}`), {
+                // Non-blocking update to RTDB to avoid throttling the upload
+                update(ref(rtdb, `posts/${postId}`), {
                     processingProgress: refinedProgress
-                });
+                }).catch(e => console.error("Progress update failed:", e));
             });
 
             // Finalizing
@@ -406,13 +407,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             }
 
         } catch (error) {
-            console.error("Error processing media:", error);
+            console.error(`Error processing media for post ${postId}:`, error);
 
             // Mark processing as failed
-            await update(ref(rtdb, `posts/${postId}`), {
-                processing: false,
-                processingError: true
-            });
+            try {
+                await update(ref(rtdb, `posts/${postId}`), {
+                    processing: false,
+                    processingError: true
+                });
+            } catch (updateError) {
+                console.error("Failed to set processing error state:", updateError);
+            }
 
             showToast("Failed to process media. Your post may not display correctly.", "error");
         }
