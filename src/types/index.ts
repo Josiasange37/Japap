@@ -75,6 +75,7 @@ export interface UserProfile {
         helpfulFlags: number;
         communityContribution: number;
     };
+    categoryInterests?: Record<string, number>;
 }
 
 export interface JapapNotification {

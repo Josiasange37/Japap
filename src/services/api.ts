@@ -79,6 +79,20 @@ export const JapapAPI = {
         }
     },
 
+    async updateUserInterest(pseudo: string, category: string, weight: number): Promise<void> {
+        if (!pseudo || !category) return;
+        const normalized = normalizePseudo(pseudo);
+        const userRef = ref(rtdb, `users/${normalized}/categoryInterests/${category}`);
+
+        try {
+            await runTransaction(userRef, (current: number | null) => {
+                return (current || 0) + weight;
+            });
+        } catch (error) {
+            console.error("Error updating interest score:", error);
+        }
+    },
+
     // Posts
     async getPosts(): Promise<Post[]> {
         // This is now mainly handled by real-time listeners in AppContext, 

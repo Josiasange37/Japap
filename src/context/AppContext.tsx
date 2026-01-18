@@ -4,6 +4,7 @@ import { JapapAPI } from '../services/api';
 import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get, endAt, orderByKey, DataSnapshot } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
+import { suggestCategory } from '../utils/contentCategories';
 import { cleanObject } from '../utils/object';
 
 interface AppContextType {
@@ -38,6 +39,23 @@ interface AppContextType {
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+// TikTok-style ranking logic
+const calculatePostScore = (post: Post, userInterests?: Record<string, number>) => {
+    const timestamp = typeof post.timestamp === 'number' ? post.timestamp : Date.now();
+    const ageInHours = (Date.now() - timestamp) / (1000 * 60 * 60);
+    // Exponential decay: Half-life of 24 hours
+    const timeDecay = Math.pow(0.5, ageInHours / 24);
+
+    let interestMultiplier = 1;
+    if (userInterests && post.category) {
+        const interestScore = userInterests[post.category] || 0;
+        // Cap the multiplier to prevent too much bias (max 3x boost)
+        interestMultiplier += Math.min(interestScore / 10, 2);
+    }
+
+    return timeDecay * interestMultiplier;
+};
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<UserProfile | null>(() => {
@@ -136,11 +154,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     disliked: user?.pseudo ? data[key].users?.[user.pseudo]?.disliked : false,
                     userReaction: user?.pseudo ? data[key].users?.[user.pseudo]?.reaction : null
                 })).sort((a, b) => {
-                    const timeA = typeof a.timestamp === 'number' ? a.timestamp : 0;
-                    const timeB = typeof b.timestamp === 'number' ? b.timestamp : 0;
-                    // Sort by timestamp DESC (newest first)
-                    // If timestamps are equal, sort by ID DESC
-                    if (timeB !== timeA) return timeB - timeA;
+                    const scoreA = calculatePostScore(a, user?.categoryInterests);
+                    const scoreB = calculatePostScore(b, user?.categoryInterests);
+                    if (scoreB !== scoreA) return scoreB - scoreA;
                     return b.id.localeCompare(a.id);
                 });
                 setPosts((prev: Post[]) => {
@@ -152,7 +168,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                             newPosts.push(p);
                         }
                     });
-                    return newPosts.sort((a: Post, b: Post) => (b.timestamp as number || 0) - (a.timestamp as number || 0));
+                    // Final sorted feed
+                    return newPosts.sort((a, b) => {
+                        const scoreA = calculatePostScore(a, user?.categoryInterests);
+                        const scoreB = calculatePostScore(b, user?.categoryInterests);
+                        return scoreB - scoreA;
+                    });
                 });
 
                 setFeedState((prev: PaginatedFeedState) => ({
@@ -172,7 +193,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (initialLoad) return;
             const post = snapshot.val();
             if (post && (!user || post.author.username !== user.pseudo)) {
-                showToast(`New gossip from ${post.author.username}`, 'info');
+                showToast(`New gossip from ${post.author.username} `, 'info');
             }
         });
 
@@ -277,9 +298,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // For media posts, if content is a blob URL from the UI, we'll use it as temporaryContent
         const tempContent = isMediaPost ? newPostData.content : null;
 
+        // Auto-suggest category if not provided
+        const contentForCategory = newPostData.caption || newPostData.content;
+        const suggestedCat = suggestCategory(contentForCategory)?.id || 'general';
+
         // Create post object for the server
         const newPost = cleanObject({
             ...newPostData,
+            category: newPostData.category || suggestedCat,
             author,
             timestamp: serverTimestamp(),
             stats: { likes: 0, dislikes: 0, comments: 0, views: 0 },
@@ -300,6 +326,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             processing: isMediaPost,
             processingProgress: isMediaPost ? 0 : undefined,
             temporaryContent: tempContent,
+            category: newPostData.category || suggestedCat,
             liked: false,
             disliked: false
         };
@@ -408,8 +435,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     postId: id
                 });
             }
+            // Track interest: Like = +1
+            const post = posts.find(p => p.id === id);
+            if (post?.category) {
+                JapapAPI.updateUserInterest(user.pseudo, post.category, 1);
+            }
         } catch (error) {
-            console.error(error);
+            console.error("AppContext likePost failed:", error);
         }
     };
 
@@ -417,8 +449,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!user?.pseudo) return;
         try {
             await JapapAPI.toggleDislike(id, user.pseudo);
+            // Track interest: Dislike = -0.5
+            const post = posts.find(p => p.id === id);
+            if (post?.category) {
+                JapapAPI.updateUserInterest(user.pseudo, post.category, -0.5);
+            }
         } catch (error) {
-            console.error(error);
+            console.error("AppContext dislikePost failed:", error);
         }
     };
 
@@ -436,13 +473,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                     postId
                 });
             }
+            // Track interest: Reaction = +1.5
+            const post = posts.find(p => p.id === postId);
+            if (post?.category) {
+                JapapAPI.updateUserInterest(user.pseudo, post.category, 1.5);
+            }
         } catch (error) {
             console.error(error);
         }
     };
 
     const addComment = async (postId: string, text: string, replyTo?: GossipComment) => {
-        if (!user) {
+        if (!user?.pseudo) {
             console.error("Cannot add comment: No user in state");
             showToast("You must be registered to comment.", "error");
             return;
@@ -471,6 +513,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 });
             }
             showToast("Comment posted!", "success");
+
+            // Track interest: Comment = +2
+            const post = posts.find(p => p.id === postId);
+            if (post?.category) {
+                JapapAPI.updateUserInterest(user.pseudo, post.category, 2);
+            }
         } catch (error) {
             console.error("AppContext addComment failed:", error);
             showToast("Failed to post comment", "error");
@@ -548,9 +596,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                         userReaction: user?.pseudo ? data[key].users?.[user.pseudo]?.reaction : null
                     }))
                     .sort((a, b) => {
-                        const timeA = typeof a.timestamp === 'number' ? a.timestamp : 0;
-                        const timeB = typeof b.timestamp === 'number' ? b.timestamp : 0;
-                        if (timeB !== timeA) return timeB - timeA;
+                        const scoreA = calculatePostScore(a, user?.categoryInterests);
+                        const scoreB = calculatePostScore(b, user?.categoryInterests);
+                        if (scoreB !== scoreA) return scoreB - scoreA;
                         return b.id.localeCompare(a.id);
                     });
 
