@@ -4,6 +4,7 @@ import { JapapAPI } from '../services/api';
 import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get, endAt } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
+import { cleanObject } from '../utils/object';
 
 interface AppContextType {
     user: UserProfile | null;
@@ -253,17 +254,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         const newPostRef = push(ref(rtdb, 'posts'));
 
-        // Utility to remove undefined values before sending to Firebase
-        const cleanObject = (obj: Record<string, unknown>) => {
-            const newObj = { ...obj };
-            Object.keys(newObj).forEach(key => {
-                if (newObj[key] === undefined) {
-                    delete newObj[key];
-                }
-            });
-            return newObj;
-        };
-
         // Check if this is a media post that needs processing
         const isMediaPost = mediaFile && ['image', 'video', 'audio'].includes(newPostData.type);
 
@@ -282,7 +272,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         try {
             // Phase 1: Create post immediately
-            await set(newPostRef, newPost);
+            await set(newPostRef, cleanObject(newPost));
 
             if (isMediaPost) {
                 // Phase 2: Show immediate confirmation and process media in background
@@ -422,13 +412,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         console.log("AppContext addComment calling API with:", { postId, text, pseudo: user.pseudo });
 
-        const comment = {
+        const comment = cleanObject({
             text,
-            author: { id: user.pseudo, username: user.pseudo, avatar: user.avatar },
+            author: { id: user.pseudo, username: user.pseudo, avatar: user.avatar || null },
             reactions: {},
             userReactions: {},
             ...(replyTo ? { replyTo: { id: replyTo.id, username: replyTo.author.username, text: replyTo.text } } : {})
-        };
+        });
 
         try {
             await JapapAPI.addComment(postId, comment);
