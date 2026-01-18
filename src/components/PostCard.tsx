@@ -263,34 +263,17 @@ export default function PostCard({ post }: PostCardProps) {
                     <div className="space-y-3">
                         <div className="rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--bg-secondary)] relative">
                             {isProcessing ? (
-                                <div className="w-full h-[300px] flex flex-col items-center justify-center relative overflow-hidden bg-[var(--bg-secondary)]">
-                                    {/* Show temporary preview if available */}
-                                    {post.temporaryContent && (
+                                <div className="w-full relative overflow-hidden bg-[var(--bg-secondary)]">
+                                    {/* Show temporary preview clearly if available */}
+                                    {post.temporaryContent ? (
                                         <img
                                             src={post.temporaryContent}
                                             alt="Preview"
-                                            className="absolute inset-0 w-full h-full object-cover blur-[2px] opacity-40"
+                                            className="w-full h-auto max-h-[500px] object-cover"
                                         />
+                                    ) : (
+                                        <div className="w-full h-[300px] bg-[var(--border)] animate-pulse" />
                                     )}
-                                    {/* Skeleton Shimmer */}
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[var(--border)] to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-
-                                    <div className="relative z-10 flex flex-col items-center gap-4">
-                                        <div className="relative">
-                                            <div className="w-20 h-20 border-4 border-blue-500/20 rounded-full" />
-                                            <div
-                                                className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"
-                                                style={{ clipPath: `inset(0 0 ${100 - processingProgress}% 0)` }}
-                                            />
-                                            <div className="absolute inset-0 flex items-center justify-center font-black text-[var(--brand)] text-xs">
-                                                {processingProgress}%
-                                            </div>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-sm font-black uppercase tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-[var(--text)] to-[var(--text-muted)]">Uploading High Quality</p>
-                                            <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1 italic">Patienter pour le nouveau japap...</p>
-                                        </div>
-                                    </div>
                                 </div>
                             ) : processingError ? (
                                 <div className="w-full h-[300px] flex flex-col items-center justify-center bg-red-500/5 border-2 border-dashed border-red-500/20 rounded-2xl m-4">
@@ -321,29 +304,12 @@ export default function PostCard({ post }: PostCardProps) {
                         <div className="relative rounded-2xl overflow-hidden aspect-video bg-black flex items-center justify-center border border-[var(--border)]">
                             {isProcessing ? (
                                 <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-zinc-900">
-                                    {/* Show temporary preview if available */}
-                                    {post.temporaryContent && (
-                                        <div className="absolute inset-0 w-full h-full opacity-30 blur-sm">
-                                            <video src={post.temporaryContent} className="w-full h-full object-cover" />
-                                        </div>
+                                    {/* Show temporary preview clearly if available */}
+                                    {post.temporaryContent ? (
+                                        <video src={post.temporaryContent} className="w-full h-full object-cover" autoPlay muted loop />
+                                    ) : (
+                                        <div className="w-full h-full bg-zinc-800 animate-pulse" />
                                     )}
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                                    <div className="relative z-10 flex flex-col items-center gap-4">
-                                        <div className="relative">
-                                            <div className="w-20 h-20 border-4 border-white/10 rounded-full" />
-                                            <div
-                                                className="absolute inset-0 border-4 border-[var(--brand)] rounded-full border-t-transparent animate-spin"
-                                                style={{ clipPath: `inset(0 0 ${100 - processingProgress}% 0)` }}
-                                            />
-                                            <div className="absolute inset-0 flex items-center justify-center font-black text-white text-xs">
-                                                {processingProgress}%
-                                            </div>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-sm font-black uppercase tracking-widest text-white">Encoding Video</p>
-                                            <p className="text-[10px] font-bold text-zinc-500 mt-1 italic">Patienter pour le nouveau japap...</p>
-                                        </div>
-                                    </div>
                                 </div>
                             ) : processingError ? (
                                 <div className="w-full h-full flex flex-col items-center justify-center bg-red-500/10 border border-red-500/20 rounded-2xl">
@@ -375,25 +341,16 @@ export default function PostCard({ post }: PostCardProps) {
                     <div className="space-y-3">
                         <div className="bg-[var(--bg-secondary)] p-6 rounded-2xl flex flex-col items-center gap-4 border border-[var(--border)]">
                             {isProcessing ? (
-                                <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden bg-zinc-900/10 dark:bg-zinc-800/10 rounded-xl py-6">
-                                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
-                                    <div className="relative z-10 flex flex-col items-center gap-4">
-                                        <div className="relative">
-                                            <div className="w-20 h-20 border-4 border-white/10 rounded-full" />
-                                            <div
-                                                className="absolute inset-0 border-4 border-[var(--brand)] rounded-full border-t-transparent animate-spin"
-                                                style={{ clipPath: `inset(0 0 ${100 - processingProgress}% 0)` }}
-                                            />
-                                            <div className="absolute inset-0 flex items-center justify-center font-black text-[var(--brand)] text-xs">
-                                                {processingProgress}%
-                                            </div>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-sm font-black uppercase tracking-widest text-[var(--brand)]">Processing Audio</p>
-                                            <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1 italic">Patienter pour le nouveau japap...</p>
-                                        </div>
+                                <>
+                                    <div className="w-16 h-16 bg-[var(--brand)]/20 rounded-full flex items-center justify-center text-[var(--brand)] animate-pulse">
+                                        <Volume2 size={32} />
                                     </div>
-                                </div>
+                                    <audio
+                                        src={post.temporaryContent || ''}
+                                        controls
+                                        className="w-full h-10 opacity-50"
+                                    />
+                                </>
                             ) : processingError ? (
                                 <div className="w-full flex flex-col items-center justify-center bg-red-500/5 border border-dashed border-red-500/20 rounded-2xl p-6">
                                     <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-3">
