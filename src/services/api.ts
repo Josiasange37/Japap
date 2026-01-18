@@ -1,4 +1,4 @@
-import type { Post, UserProfile } from '../types';
+import type { Post, UserProfile, GossipComment, JapapNotification } from '../types';
 import { ref, set, get, child, push, runTransaction, serverTimestamp, remove } from 'firebase/database';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { rtdb, storage } from '../firebase';
@@ -98,7 +98,7 @@ export const JapapAPI = {
         });
     },
 
-    async createPost(post: any): Promise<string> {
+    async createPost(post: Omit<Post, 'id' | 'stats'>): Promise<string> {
         const newPostRef = push(ref(rtdb, 'posts'));
         await set(newPostRef, {
             ...post,
@@ -203,14 +203,14 @@ export const JapapAPI = {
     },
 
     // Comments
-    async addComment(postId: string, comment: any): Promise<string> {
+    async addComment(postId: string, comment: Omit<GossipComment, 'id' | 'timestamp'>): Promise<string> {
         const newCommentRef = push(ref(rtdb, `comments/${postId}`));
         const commentId = newCommentRef.key as string;
         await set(newCommentRef, { ...comment, id: commentId, timestamp: serverTimestamp() });
 
         // Increment count
         const postStatsRef = ref(rtdb, `posts/${postId}/stats/comments`);
-        await runTransaction(postStatsRef, (current) => (current || 0) + 1);
+        await runTransaction(postStatsRef, (current: number | null) => (current || 0) + 1);
 
         return commentId;
     },
@@ -242,7 +242,7 @@ export const JapapAPI = {
     },
 
     // Notifications
-    async sendNotification(recipientPseudo: string, notification: any): Promise<void> {
+    async sendNotification(recipientPseudo: string, notification: Omit<JapapNotification, 'id' | 'timestamp' | 'read'>): Promise<void> {
         const normalized = normalizePseudo(recipientPseudo);
         const notifRef = push(ref(rtdb, `notifications/${normalized}`));
         await set(notifRef, { ...notification, timestamp: serverTimestamp(), read: false });

@@ -1,24 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { VerificationLevel, UserProfile } from '../types';
 import { useApp } from './AppContext';
-
-export type VerificationLevel = 'unverified' | 'basic' | 'verified' | 'premium';
-
-export interface UserProfile {
-  id?: string;
-  pseudo: string;
-  avatar?: string;
-  bio?: string;
-  verificationLevel: VerificationLevel;
-  verificationBadge?: string;
-  joinedAt: number;
-  lastActive: number;
-  stats: {
-    postsCount: number;
-    reputation: number;
-    helpfulFlags: number;
-    communityContribution: number;
-  };
-}
 
 interface VerificationContextType {
   verificationLevel: VerificationLevel;
@@ -36,18 +18,12 @@ export function VerificationProvider({ children }: { children: React.ReactNode }
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [verificationLevel, setVerificationLevel] = useState<VerificationLevel>('unverified');
 
-  useEffect(() => {
-    if (user) {
-      loadUserProfile();
-    }
-  }, [user]);
-
-  const loadUserProfile = async () => {
-    // In a real app, this would load from your backend
-    const mockProfile: UserProfile = {
-      pseudo: user?.pseudo || '',
-      avatar: user?.avatar || undefined,
-      bio: user?.bio || undefined,
+  const getMockProfile = (currentUser: UserProfile | null): UserProfile => {
+    return {
+      pseudo: currentUser?.pseudo || '',
+      avatar: currentUser?.avatar || null,
+      bio: currentUser?.bio || '',
+      onboarded: true,
       verificationLevel: 'basic',
       verificationBadge: 'Basic',
       joinedAt: Date.now() - (30 * 24 * 60 * 60 * 1000), // 30 days ago
@@ -59,9 +35,43 @@ export function VerificationProvider({ children }: { children: React.ReactNode }
         communityContribution: 3
       }
     };
+  };
 
-    setProfile(mockProfile);
-    setVerificationLevel(mockProfile.verificationLevel);
+  useEffect(() => {
+    let mounted = true;
+    if (user) {
+      // Use timeout to avoid synchronous state update warning during effect
+      const timer = setTimeout(() => {
+        if (!mounted) return;
+        const mock = getMockProfile(user);
+        setProfile(mock);
+        setVerificationLevel(mock.verificationLevel || 'unverified');
+      }, 0);
+      return () => {
+        mounted = false;
+        clearTimeout(timer);
+      };
+    }
+    return () => { mounted = false; };
+  }, [user]);
+
+
+  const simulateVerificationProcess = async (): Promise<boolean> => {
+    // Simulate API call
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(Math.random() > 0.3); // 70% success rate
+      }, 2000);
+    });
+  };
+
+  const getBadgeText = (level: VerificationLevel): string => {
+    switch (level) {
+      case 'basic': return 'Basic';
+      case 'verified': return 'Verified';
+      case 'premium': return 'Premium';
+      default: return '';
+    }
   };
 
   const requestVerification = async (level: VerificationLevel): Promise<boolean> => {
@@ -76,11 +86,11 @@ export function VerificationProvider({ children }: { children: React.ReactNode }
           break;
         case 'verified':
           // Phone verification or ID check
-          success = await simulateVerificationProcess('verified');
+          success = await simulateVerificationProcess();
           break;
         case 'premium':
           // Paid verification or advanced verification
-          success = await simulateVerificationProcess('premium');
+          success = await simulateVerificationProcess();
           break;
       }
 
@@ -98,24 +108,6 @@ export function VerificationProvider({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error('Verification failed:', error);
       return false;
-    }
-  };
-
-  const simulateVerificationProcess = async (type: VerificationLevel): Promise<boolean> => {
-    // Simulate API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(Math.random() > 0.3); // 70% success rate
-      }, 2000);
-    });
-  };
-
-  const getBadgeText = (level: VerificationLevel): string => {
-    switch (level) {
-      case 'basic': return 'Basic';
-      case 'verified': return 'Verified';
-      case 'premium': return 'Premium';
-      default: return '';
     }
   };
 
@@ -144,6 +136,7 @@ export function VerificationProvider({ children }: { children: React.ReactNode }
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useVerification() {
   const context = useContext(VerificationContext);
   if (context === undefined) {
@@ -151,40 +144,3 @@ export function useVerification() {
   }
   return context;
 }
-
-export const VerificationBadge = ({ level, className = '' }: { level: VerificationLevel; className?: string }) => {
-  const getBadgeConfig = () => {
-    switch (level) {
-      case 'basic':
-        return {
-          color: 'bg-blue-500',
-          text: 'Basic',
-          icon: '✓'
-        };
-      case 'verified':
-        return {
-          color: 'bg-emerald-500',
-          text: 'Verified',
-          icon: '✓✓'
-        };
-      case 'premium':
-        return {
-          color: 'bg-purple-500',
-          text: 'Premium',
-          icon: '⭐'
-        };
-      default:
-        return null;
-    }
-  };
-
-  const config = getBadgeConfig();
-  if (!config) return null;
-
-  return (
-    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-white text-xs font-black ${config.color} ${className}`}>
-      <span>{config.icon}</span>
-      <span>{config.text}</span>
-    </div>
-  );
-};

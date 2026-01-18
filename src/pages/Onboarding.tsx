@@ -94,7 +94,7 @@ export default function Onboarding() {
     );
 }
 
-function WelcomeStep({ onNext, t }: { onNext: () => void, t: any }) {
+function WelcomeStep({ onNext, t }: { onNext: () => void, t: (key: string) => string }) {
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -125,7 +125,7 @@ function WelcomeStep({ onNext, t }: { onNext: () => void, t: any }) {
     )
 }
 
-function PolicyStep({ onNext, t }: { onNext: () => void, t: any }) {
+function PolicyStep({ onNext, t }: { onNext: () => void, t: (key: string) => string }) {
     return (
         <motion.div
             initial={{ opacity: 0, x: 50 }}
@@ -150,7 +150,7 @@ function PolicyStep({ onNext, t }: { onNext: () => void, t: any }) {
     )
 }
 
-function PolicyItem({ icon: Icon, title, desc, color }: { icon: any, title: string, desc: string, color: string }) {
+function PolicyItem({ icon: Icon, title, desc, color }: { icon: React.ElementType, title: string, desc: string, color: string }) {
     return (
         <div className="bg-[var(--bg-secondary)] p-5 rounded-[28px] border border-[var(--border)] flex gap-4 items-center">
             <div className={`p-3 rounded-2xl bg-white shadow-sm ${color}`}>
@@ -170,8 +170,9 @@ function ProfileStep({ pseudo, setPseudo, bio, setBio, avatar, setAvatar, onFini
     avatar: string | null, setAvatar: (s: string | null) => void,
     onFinish: () => void,
     isLoading: boolean,
-    t: any
+    t: (key: string) => string
 }) {
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {

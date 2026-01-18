@@ -1,0 +1,103 @@
+
+> japap-social@1.0.0 lint
+> eslint .
+
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/components/CommentsSheet.tsx
+  34:9  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/components/CommentsSheet.tsx:34:9
+  32 |
+  33 |         const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'), limitToLast(50));
+> 34 |         setIsLoadingComments(true);
+     |         ^^^^^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  35 |
+  36 |         const unsubscribe = onValue(commentsRef, (snapshot) => {
+  37 |             const data = snapshot.val();  react-hooks/set-state-in-effect
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/components/PWAInstallBanner.tsx
+  10:58  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  16:89  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  17:9   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/components/PWAInstallBanner.tsx:17:9
+  15 |         // iOS Detection
+  16 |         const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+> 17 |         setIsIOS(isIOSDevice);
+     |         ^^^^^^^^ Avoid calling setState() directly within an effect
+  18 |
+  19 |         const handler = (e: any) => {
+  20 |             e.preventDefault();  react-hooks/set-state-in-effect
+  19:29  error  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/components/Waveform.tsx
+  4:28  error  React Hook "useCallback" cannot be called at the top level. React Hooks must be called in a React function component or a custom React Hook function  react-hooks/rules-of-hooks
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/context/AppContext.tsx
+   40:20  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+   81:56  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  201:8   warning  React Hook useEffect has missing dependencies: 'showToast' and 'user'. Either include them or remove the dependency array       react-hooks/exhaustive-deps
+  234:18  error    'error' is defined but never used                                                                                               @typescript-eslint/no-unused-vars
+  253:25  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  268:35  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  321:15  error    Unexpected any. Specify a different type                                                                                        @typescript-eslint/no-explicit-any
+  587:17  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/context/LanguageContext.tsx
+  232:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/context/ThemeContext.tsx
+  35:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/context/VerificationContext.tsx
+   41:7   error    Error: Cannot access variable before it is declared
+
+`loadUserProfile` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/context/VerificationContext.tsx:41:7
+  39 |   useEffect(() => {
+  40 |     if (user) {
+> 41 |       loadUserProfile();
+     |       ^^^^^^^^^^^^^^^ `loadUserProfile` accessed before it is declared
+  42 |     }
+  43 |   }, [user]);
+  44 |
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/context/VerificationContext.tsx:45:3
+  43 |   }, [user]);
+  44 |
+> 45 |   const loadUserProfile = async () => {
+     |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 46 |     // In a real app, this would load from your backend
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 47 |     const mockProfile: UserProfile = {
+     …
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 64 |     setVerificationLevel(mockProfile.verificationLevel);
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 65 |   };
+     | ^^^^^ `loadUserProfile` is declared here
+  66 |
+  67 |   const requestVerification = async (level: VerificationLevel): Promise<boolean> => {
+  68 |     try {  react-hooks/immutability
+   43:6   warning  React Hook useEffect has a missing dependency: 'loadUserProfile'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 react-hooks/exhaustive-deps
+  104:46  error    'type' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  147:17  error    Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-refresh/only-export-components
+
+/home/josias/.gemini/antigravity/scratch/japap-social/src/hooks/useInfiniteFeed.ts
+  17:11  error  Unexpected empty object pattern  no-empty-pattern
+
+✖ 21 problems (19 errors, 2 warnings)
+

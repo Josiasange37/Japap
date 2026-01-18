@@ -11,6 +11,8 @@ import {
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { contentModerator } from '../utils/contentModeration';
+
 
 export default function CreatePost() {
     const [content, setContent] = useState('');
@@ -63,6 +65,32 @@ export default function CreatePost() {
     const handlePost = async () => {
         if (!content && !mediaPreview) return;
         setIsPosting(true);
+
+        // 1. Moderate Text
+        const textModeration = contentModerator.moderateText(content);
+        if (textModeration.isBlocked) {
+            showToast(`Post blocked: ${textModeration.reasons.join(', ')}`, 'error');
+            setIsPosting(false);
+            return;
+        }
+
+        // 2. Moderate Media (if any)
+        if (mediaFile) {
+            try {
+                const mediaModeration = await contentModerator.moderateMedia(mediaFile);
+                if (mediaModeration.isBlocked) {
+                    showToast(`Media blocked: ${mediaModeration.reasons.join(', ')}`, 'error');
+                    setIsPosting(false);
+                    return;
+                }
+            } catch (error) {
+                console.error("Media moderation error:", error);
+                // Fail open or closed? Safe to fail closed for now if moderation crashes
+                showToast("Failed to verify media content.", 'error');
+                setIsPosting(false);
+                return;
+            }
+        }
 
         try {
             const postData = {
@@ -131,6 +159,7 @@ export default function CreatePost() {
                             onClick={() => {
                                 setMediaPreview(null);
                                 setMediaFile(null);
+                                setType('text'); // Reset type to text when removing media
                             }}
                             className="absolute top-2 right-2 p-2 bg-black/50 text-white rounded-full hover:bg-black transition-colors z-10"
                         >

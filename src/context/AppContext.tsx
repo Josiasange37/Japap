@@ -1,22 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { Post, UserProfile, GossipComment } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { Post, UserProfile, GossipComment, Toast, PaginatedFeedState, JapapNotification } from '../types';
 import { JapapAPI } from '../services/api';
 import { ref, onValue, query, limitToLast, onChildAdded, push, set, serverTimestamp, update, get, endAt } from 'firebase/database';
 import { rtdb } from '../firebase';
 import { formatRelativeTime } from '../utils/time';
 
-export interface Toast {
-    id: string;
-    message: string;
-    type: 'success' | 'error' | 'info';
-}
-
-export interface PaginatedFeedState {
-    posts: Post[];
-    nextCursor?: string;
-    hasMore: boolean;
-    isLoadingMore: boolean;
-}
 interface AppContextType {
     user: UserProfile | null;
     posts: Post[];
@@ -37,8 +25,10 @@ interface AppContextType {
     setActiveCommentsPostId: (id: string | null) => void;
     isLoading: boolean;
     deletePost: (id: string) => Promise<void>;
-    notifications: any[];
-    removeNotification: (id: number) => void;
+    notifications: JapapNotification[];
+    removeNotification: (id: string) => void;
+    markNotificationRead: (id: string) => Promise<void>;
+    clearAllNotifications: () => Promise<void>;
     trendingCount: number;
     clearTrendingCount: () => void;
     uploadFile: (file: File, folder?: string, onProgress?: (progress: number) => void) => Promise<string>;
@@ -76,18 +66,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return !cached;
     });
     const [trendingCount, setTrendingCount] = useState(3);
-    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<JapapNotification[]>([]);
 
-    const removeToast = (id: string) => {
+    const removeToast = useCallback((id: string) => {
         setToasts(prev => prev.filter(t => t.id !== id));
-    };
+    }, []);
 
-    const showToast = (message: string, type: Toast['type'] = 'success') => {
+    const showToast = useCallback((message: string, type: Toast['type'] = 'success') => {
         const id = Date.now().toString();
         const newToast: Toast = { id, message, type };
         setToasts(prev => [...prev, newToast]);
         setTimeout(() => removeToast(id), 3000);
-    };
+    }, [removeToast]);
 
     useEffect(() => {
         const verifyUser = async () => {
@@ -196,7 +186,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             notifUnsub();
             if (userUnsubscribe) userUnsubscribe();
         };
-    }, [user?.pseudo]);
+    }, [user, user?.pseudo, showToast]);
 
     // Personal Notifications
     useEffect(() => {
@@ -229,7 +219,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             setUser(newUser);
             localStorage.setItem('japap_user', JSON.stringify(newUser));
             showToast("Welcome to Japap!", "success");
-        } catch (error) {
+        } catch {
             showToast("Failed to register.", "error");
         }
     };
@@ -248,7 +238,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('japap_user', JSON.stringify(newUser));
 
             showToast("Profile updated!", "success");
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as Error;
             showToast(error.message || "Failed to update profile.", "error");
         }
     };
@@ -263,7 +254,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const newPostRef = push(ref(rtdb, 'posts'));
 
         // Utility to remove undefined values before sending to Firebase
-        const cleanObject = (obj: any) => {
+        const cleanObject = (obj: Record<string, unknown>) => {
             const newObj = { ...obj };
             Object.keys(newObj).forEach(key => {
                 if (newObj[key] === undefined) {
@@ -299,7 +290,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
                 // Start background processing
                 if (mediaFile) {
-                    processMediaInBackground(newPostRef.key!, newPost, mediaFile, author, newPostData);
+                    processMediaInBackground(newPostRef.key!, newPost as unknown as Post, mediaFile);
                 }
             } else {
                 showToast("Scoop posted successfully!", "success");
@@ -316,10 +307,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // Background media processing
     const processMediaInBackground = async (
         postId: string,
-        post: any,
-        mediaFile: File,
-        author: any,
-        originalData: any
+        post: Post,
+        mediaFile: File
     ) => {
         try {
             // Upload media with granular progress reporting
@@ -454,7 +443,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 });
             }
             showToast("Comment posted!", "success");
-        } catch (error) {
+        } catch {
             showToast("Failed to post comment", "error");
         }
     };
@@ -472,13 +461,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
             await JapapAPI.deletePost(id);
             showToast("Post deleted.", "success");
-        } catch (error) {
+        } catch {
             showToast("Failed to delete.", "error");
         }
     };
 
-    const removeNotification = (id: number) => {
+    const removeNotification = (id: string) => {
+        if (!user?.pseudo) return;
+        // Optimistic update
         setNotifications(prev => prev.filter(n => n.id !== id));
+        const normalized = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        // In RTDB we'd need the real key, not the ID if ID is different?
+        // Assuming id passed here is the RTDB key.
+        set(ref(rtdb, `notifications/${normalized}/${id}`), null);
+    };
+
+    const markNotificationRead = async (id: string) => {
+        if (!user?.pseudo) return;
+        const normalized = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        await update(ref(rtdb, `notifications/${normalized}/${id}`), { read: true });
+    };
+
+    const clearAllNotifications = async () => {
+        if (!user?.pseudo) return;
+        const normalized = user.pseudo.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        await set(ref(rtdb, `notifications/${normalized}`), null);
     };
 
     const clearTrendingCount = () => setTrendingCount(0);
@@ -491,17 +498,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         try {
             // Find the oldest post's timestamp/ID
             const oldestPost = posts[posts.length - 1];
-            const oldestTime = (oldestPost.timestamp as number) || Date.now();
 
             // Query for posts older than the oldest one currently loaded
             const postsRef = ref(rtdb, 'posts');
-            const morePostsQuery = query(
-                postsRef,
-                // Usually keys are chronological, so we can use them for better accuracy if timestamps overlap
-                // But since we want "older than", and RTDB's limitToLast returns the *last* ones in the set,
-                // we order by key and end at the one before the current oldest.
-                limitToLast(11) // 10 more plus the oldest one (overlapping)
-            );
 
             // Using endAt with ID is more reliable than timestamp which might overlap
             const fetchQuery = query(postsRef, limitToLast(21), endAt(null, oldestPost.id));
@@ -558,7 +557,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             registerUser, addPost, likePost, dislikePost, addReaction,
             addCommentReaction, addComment, toasts, showToast, removeToast,
             activeCommentsPostId, setActiveCommentsPostId, isLoading, deletePost,
-            notifications, removeNotification, trendingCount, clearTrendingCount,
+            notifications, removeNotification, markNotificationRead, clearAllNotifications,
+            trendingCount, clearTrendingCount,
             uploadFile, fetchMorePosts, resetFeed
         }}>
             {children}
@@ -573,6 +573,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useApp() {
     const context = useContext(AppContext);
     if (!context) throw new Error('useApp must be used within AppProvider');

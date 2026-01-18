@@ -17,7 +17,7 @@ export default function Trending() {
     // Clear badge on mount
     useEffect(() => {
         clearTrendingCount();
-    }, []);
+    }, [clearTrendingCount]);
 
     // Sort posts by viral score (views, likes, comments)
     const sortedPosts = [...posts].sort((a, b) => {

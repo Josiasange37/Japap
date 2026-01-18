@@ -30,31 +30,42 @@ export default function CommentsSheet() {
     useEffect(() => {
         if (!postId) return;
 
-        const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'), limitToLast(50));
-        setIsLoadingComments(true);
+        let isMounted = true;
+        const loadComments = () => {
+            if (isMounted) setIsLoadingComments(true);
 
-        const unsubscribe = onValue(commentsRef, (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                const loadedComments = Object.values(data) as GossipComment[];
+            const commentsRef = query(ref(rtdb, `comments/${postId}`), orderByChild('timestamp'), limitToLast(50));
 
-                if (user?.pseudo) {
-                    loadedComments.forEach(comment => {
-                        if (comment.userReactions && comment.userReactions[user.pseudo]) {
-                            comment.userReaction = comment.userReactions[user.pseudo];
-                        }
-                    });
+            const unsubscribe = onValue(commentsRef, (snapshot) => {
+                if (!isMounted) return;
+                const data = snapshot.val();
+                if (data) {
+                    const loadedComments = Object.values(data) as GossipComment[];
+
+                    if (user?.pseudo) {
+                        loadedComments.forEach(comment => {
+                            if (comment.userReactions && comment.userReactions[user.pseudo]) {
+                                comment.userReaction = comment.userReactions[user.pseudo];
+                            }
+                        });
+                    }
+
+                    loadedComments.sort((a, b) => a.timestamp - b.timestamp);
+                    setComments(loadedComments);
+                } else {
+                    setComments([]);
                 }
+                setIsLoadingComments(false);
+            });
+            return unsubscribe;
+        };
 
-                loadedComments.sort((a, b) => a.timestamp - b.timestamp);
-                setComments(loadedComments);
-            } else {
-                setComments([]);
-            }
-            setIsLoadingComments(false);
-        });
+        const unsub = loadComments();
 
-        return () => unsubscribe();
+        return () => {
+            isMounted = false;
+            if (unsub) unsub();
+        };
     }, [postId, user?.pseudo]);
 
     const handleSubmit = async (e: React.FormEvent) => {

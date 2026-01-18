@@ -56,9 +56,50 @@ export interface GossipComment {
     userReactions?: Record<string, string>;
 }
 
+export type VerificationLevel = 'unverified' | 'basic' | 'verified' | 'premium';
+
 export interface UserProfile {
     pseudo: string;
     avatar: string | null;
     bio: string;
     onboarded: boolean;
+    // Verification & Stats
+    verificationLevel?: VerificationLevel;
+    verificationBadge?: string;
+    joinedAt?: number;
+    lastActive?: number;
+    stats?: {
+        postsCount: number;
+        reputation: number;
+        helpfulFlags: number;
+        communityContribution: number;
+    };
+}
+
+export interface JapapNotification {
+    id: string;
+    type: 'like' | 'dislike' | 'comment' | 'reaction' | 'post_live' | 'trending' | 'new_post' | 'follow' | 'system';
+    from?: string;
+    userId?: string; // ID of the user who triggered the notification
+    userName?: string;
+    userAvatar?: string;
+    title: string;
+    message: string;
+    timestamp: number | object; // serverTimestamp() result or number
+    read: boolean;
+    postId?: string;
+    time?: string; // UI specific formatted time
+}
+
+export interface Toast {
+    id: string;
+    message: string;
+    type: 'success' | 'error' | 'info';
+}
+
+export interface PaginatedFeedState {
+    posts: Post[];
+    nextCursor?: string;
+    hasMore: boolean;
+    isLoadingMore: boolean;
 }

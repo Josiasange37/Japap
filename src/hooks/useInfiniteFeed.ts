@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Post } from '../types';
-import { useApp } from '../context/AppContext';
+
 
 interface InfiniteFeedState {
     posts: Post[];
@@ -14,7 +14,7 @@ interface InfiniteFeedState {
 const POSTS_PER_PAGE = 20;
 
 export function useInfiniteFeed() {
-    const { user } = useApp();
+
     const [state, setState] = useState<InfiniteFeedState>({
         posts: [],
         nextCursor: undefined,
@@ -28,42 +28,56 @@ export function useInfiniteFeed() {
     const initialLoadRef = useRef(true);
 
     // Load initial posts
-    const loadInitialPosts = useCallback(async () => {
-        if (loadingRef.current) return;
-        loadingRef.current = true;
+    // Initial load logic moved inside useEffect to avoid lint warning
+    useEffect(() => {
+        let mounted = true;
 
-        try {
-            setState(prev => ({ ...prev, isLoading: true, error: null }));
+        const load = async () => {
+            if (loadingRef.current) return;
+            loadingRef.current = true;
 
-            // Load from cache first
-            const cachedPosts = localStorage.getItem('japap_posts_cache');
-            if (cachedPosts && initialLoadRef.current) {
-                try {
-                    const parsed = JSON.parse(cachedPosts);
+            try {
+                if (mounted) setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+                // Load from cache first
+                const cachedPosts = localStorage.getItem('japap_posts_cache');
+                if (cachedPosts && initialLoadRef.current) {
+                    try {
+                        const parsed = JSON.parse(cachedPosts);
+                        if (mounted) {
+                            setState(prev => ({
+                                ...prev,
+                                posts: parsed,
+                                isLoading: false
+                            }));
+                        }
+                    } catch (e) {
+                        console.error("Cache parse error", e);
+                    }
+                }
+
+                // Fetch from Firebase will be here
+                initialLoadRef.current = false;
+
+            } catch (error) {
+                console.error("Error loading initial posts:", error);
+                if (mounted) {
                     setState(prev => ({
                         ...prev,
-                        posts: parsed,
+                        error: "Failed to load posts",
                         isLoading: false
                     }));
-                } catch (e) {
-                    console.error("Cache parse error", e);
                 }
+            } finally {
+                loadingRef.current = false;
             }
+        };
 
-            // Fetch from Firebase (simulated - will be replaced with AppContext logic)
-            // This will be integrated with AppContext in the next phase
-            initialLoadRef.current = false;
+        load();
 
-        } catch (error) {
-            console.error("Error loading initial posts:", error);
-            setState(prev => ({
-                ...prev,
-                error: "Failed to load posts",
-                isLoading: false
-            }));
-        }
-
-        loadingRef.current = false;
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     // Load more posts
@@ -108,7 +122,7 @@ export function useInfiniteFeed() {
     const updatePost = useCallback((postId: string, updates: Partial<Post>) => {
         setState(prev => ({
             ...prev,
-            posts: prev.posts.map(post => 
+            posts: prev.posts.map(post =>
                 post.id === postId ? { ...post, ...updates } : post
             )
         }));
@@ -127,10 +141,7 @@ export function useInfiniteFeed() {
         initialLoadRef.current = true;
     }, []);
 
-    // Initial load
-    useEffect(() => {
-        loadInitialPosts();
-    }, [loadInitialPosts]);
+
 
     return {
         ...state,

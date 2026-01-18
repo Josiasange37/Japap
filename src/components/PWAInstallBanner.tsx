@@ -4,21 +4,36 @@ import { Bell, Download, X, Zap, Share } from 'lucide-react';
 import { JapapAPI } from '../services/api';
 import { useLanguage } from '../context/LanguageContext';
 
+interface BeforeInstallPromptEvent extends Event {
+    prompt: () => void;
+    userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 export default function PWAInstallBanner() {
     const { t } = useLanguage();
-    const [show, setShow] = useState(false);
-    const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+    // Initialize isIOS logic
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const checkIsIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const [isIOS] = useState(checkIsIOS); // State is stable
+
+    // Initialize show state
+    const [show, setShow] = useState(() => {
+        if (checkIsIOS()) {
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+            const hasDismissed = localStorage.getItem('pwa_ios_dismissed');
+            return !isStandalone && !hasDismissed;
+        }
+        return false;
+    });
+
+    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
     const [step, setStep] = useState<'install' | 'notify'>('install');
-    const [isIOS, setIsIOS] = useState(false);
 
     useEffect(() => {
-        // iOS Detection
-        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
-        setIsIOS(isIOSDevice);
-
-        const handler = (e: any) => {
+        const handler = (e: Event) => {
             e.preventDefault();
-            setDeferredPrompt(e);
+            setDeferredPrompt(e as BeforeInstallPromptEvent);
             // Only show if not already installed
             if (!window.matchMedia('(display-mode: standalone)').matches) {
                 setShow(true);
@@ -28,14 +43,6 @@ export default function PWAInstallBanner() {
         // For Android/Chrome
         window.addEventListener('beforeinstallprompt', handler);
 
-        // For iOS, we check standalone mode manually
-        if (isIOSDevice && !window.matchMedia('(display-mode: standalone)').matches) {
-            const hasDismissed = localStorage.getItem('pwa_ios_dismissed');
-            if (!hasDismissed) {
-                setShow(true);
-            }
-        }
-
         // Also check for notification permission
         if ('Notification' in window && Notification.permission === 'default') {
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
@@ -43,16 +50,22 @@ export default function PWAInstallBanner() {
             const delay = isStandalone ? 1500 : 8000;
 
             const timeout = setTimeout(() => {
-                if (!show) {
-                    setStep('notify');
-                    setShow(true);
-                }
+                setShow((prev) => {
+                    if (!prev) {
+                        setStep('notify');
+                        return true;
+                    }
+                    return prev;
+                });
             }, delay);
-            return () => clearTimeout(timeout);
+            return () => {
+                clearTimeout(timeout);
+                window.removeEventListener('beforeinstallprompt', handler);
+            };
         }
 
         return () => window.removeEventListener('beforeinstallprompt', handler);
-    }, [show]);
+    }, []); // Empty dependency array is fine here as we only set up listeners
 
     const handleInstall = async () => {
         if (deferredPrompt) {

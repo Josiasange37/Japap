@@ -50,9 +50,10 @@ export default function Profile() {
 
             await updateUser({ bio: editBio, pseudo: editPseudo });
             setShowEdit(false);
-        } catch (error: any) {
+        } catch (error) {
             console.error("Failed to update profile:", error);
-            showToast(error.message || "Failed to update profile.", "error");
+            const errorMessage = error instanceof Error ? error.message : "Failed to update profile.";
+            showToast(errorMessage, "error");
         } finally {
             setIsUpdating(false);
         }

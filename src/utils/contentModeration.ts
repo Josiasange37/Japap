@@ -77,13 +77,10 @@ export class ContentModerator {
       confidence: 0
     };
 
-    let totalMatches = 0;
-
     this.filters.forEach(filter => {
       const matches = this.checkFilter(content, filter);
       if (matches > 0) {
-        totalMatches += matches;
-        
+
         if (filter.action === 'block') {
           result.isBlocked = true;
           result.reasons.push(`Blocked: ${filter.type} detected`);
@@ -109,7 +106,7 @@ export class ContentModerator {
       // Basic file type and size checks
       const maxSize = 25 * 1024 * 1024; // 25MB
       const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'audio/mp3', 'audio/wav'];
-      
+
       const result: ModerationResult = {
         isBlocked: false,
         isFlagged: false,
@@ -144,7 +141,7 @@ export class ContentModerator {
 
   private checkFilter(content: string, filter: ContentFilter): number {
     let matches = 0;
-    
+
     if (filter.pattern instanceof RegExp) {
       const regexMatches = content.match(filter.pattern);
       matches = regexMatches ? regexMatches.length : 0;
@@ -163,7 +160,7 @@ export class ContentModerator {
     // 1. Use a service like AWS Rekognition, Google Vision AI, or similar
     // 2. Check for adult content, violence, etc.
     // 3. Return results based on confidence scores
-    
+
     const result: ModerationResult = {
       isBlocked: false,
       isFlagged: false,
@@ -174,7 +171,7 @@ export class ContentModerator {
     // Basic filename analysis
     const suspiciousNames = ['nude', 'porn', 'xxx', 'adult', 'sex'];
     const filename = file.name.toLowerCase();
-    
+
     for (const suspicious of suspiciousNames) {
       if (filename.includes(suspicious)) {
         result.isFlagged = true;
