@@ -40,9 +40,9 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     const [isReshared, setIsReshared] = useState(false);
     const [showHeartAnimation, setShowHeartAnimation] = useState(false);
 
-    const isRiskyContent = post.content.toLowerCase().includes('leak') ||
-        post.content.toLowerCase().includes('scandal') ||
-        post.content.length > 500;
+    const isRiskyContent = (post.type === 'text' && post.content.length > 500) ||
+        post.content.toLowerCase().includes('leak') ||
+        post.content.toLowerCase().includes('scandal');
 
     // Sync local state with real data when it changes
     React.useEffect(() => {
@@ -165,7 +165,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
                                 >
                                     <Flag size={18} /> Report Scoop
                                 </button>
-                                {(post.author.id === user?.pseudo || (post.author.id === auth.currentUser?.uid)) && (
+                                {(post.author.id === user?.pseudo) && (
                                     <button
                                         onClick={() => {
                                             deletePost(post.id);

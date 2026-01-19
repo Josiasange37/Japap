@@ -310,6 +310,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 showToast("Uploading your scoop...", "info");
                 finalContent = await uploadFile(mediaFile, newPostData.type);
                 console.log("[Phase 1] Media upload complete:", finalContent);
+                if (!finalContent) throw new Error("File upload failed to return a URL");
             }
 
             // Create post object for the server
