@@ -101,7 +101,7 @@ export default function CreatePost() {
 
             console.log("Creating post with data:", postData, "Anonymous:", isAnonymous, "Media:", !!mediaFile);
             const createdPostId = await addPost(postData, isAnonymous, mediaFile);
-            console.log("Post creation call finished. Received ID:", createdPostId);
+            console.log("Post creation call successful. Received ID:", createdPostId);
             navigate('/');
 
         } catch (error) {
