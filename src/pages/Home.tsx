@@ -10,13 +10,13 @@ import { motion } from 'framer-motion';
 import { TrendingUp } from 'lucide-react';
 
 export default function Home() {
-    const { posts, isLoading, feedState, fetchMorePosts } = useApp();
+    const { posts, isLoading, feedState, fetchMorePosts, user } = useApp();
     const { t } = useLanguage();
     const loadTriggerRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
 
-    // const filteredPosts = activeCategory === 'all'
-    //     ? posts
-    //     : posts.filter(p => p.category === activeCategory);
+    // SEO/Bot logic: If not onboarded, we still show the home page but with limited interactions
+    const isOnboarded = user?.onboarded && user?.pseudo;
 
     // Intersection Observer for infinite scroll
     useEffect(() => {

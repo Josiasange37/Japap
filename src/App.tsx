@@ -28,7 +28,7 @@ function App() {
 
       <Route
         path="/"
-        element={isOnboarded ? <Home /> : <Navigate to="/onboarding" replace />}
+        element={<Home />}
       />
 
       <Route

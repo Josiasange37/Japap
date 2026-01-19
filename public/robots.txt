@@ -2,8 +2,12 @@ User-agent: *
 Allow: /
 Allow: /privacy
 Allow: /guidelines
+Allow: /blog
 Allow: /trending
 Disallow: /onboarding
 Disallow: /api/
 
-Sitemap: https://japap.social/sitemap.xml
+User-agent: Mediapartners-Google
+Allow: /
+
+Sitemap: https://japap.vercel.app/sitemap.xml
