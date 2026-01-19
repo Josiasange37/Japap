@@ -417,3 +417,5 @@ function ActionButton({
         </motion.button>
     );
 }
+
+export default PostCard;

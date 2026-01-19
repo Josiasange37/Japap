@@ -1,4 +1,5 @@
 import React, { Fragment, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PostCard from '../components/PostCard';
 import CommentsSheet from '../components/CommentsSheet';
